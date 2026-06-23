@@ -29,9 +29,10 @@ Each entry is a YAML-like block:
   goal: "Survey GRPO (Group Relative Policy Optimization) as a communication-efficient alternative to PPO for RLHF. Map the theoretical foundations: U-statistics baseline, group size scaling laws, federated variants (FGRPO). Identify integration points with the Omnigent pipeline."
   template: survey
   wiki-page: "grpo-distributed-training"
-  status: in_progress
+  status: complete
   priority: 9
   created: 2026-06-23T15:30:00Z
+  completed: 2026-06-23T21:30:00Z
   researchers: dispatched 2026-06-23T21:00:00Z
 
 - topic: "DiLoCo vs FetchSGD Communication Efficiency"
