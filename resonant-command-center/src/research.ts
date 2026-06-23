@@ -3,7 +3,7 @@
  */
 
 import { researchQueueList, addResearchBtn, researchTopic, researchTemplate, researchGoal, runPipelineBtn, benchmarkTauBtn } from './dom';
-import { researchQueue, persistResearchQueue, ResearchGoal } from './state';
+import { state, persistResearchQueue, ResearchGoal } from './state';
 import { createMessageElement } from './ui';
 
 // ── Queue CRUD ──
@@ -12,31 +12,23 @@ export function addResearchGoal(topic: string, goal: string, template: string): 
   const id = 'goal-' + Date.now().toString(36);
   const wikiPage = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const newGoal: ResearchGoal = {
-    id,
-    topic,
-    goal,
-    template,
-    wikiPage,
-    status: 'pending',
-    priority: 5,
+    id, topic, goal, template, wikiPage,
+    status: 'pending', priority: 5,
     created: new Date().toISOString(),
   };
-  researchQueue.push(newGoal);
+  state.researchQueue.push(newGoal);
   persistResearchQueue();
   createMessageElement('assistant', `[SYSTEM] Research goal added to queue: "${topic}" (${template}). The cron pipeline will process it at the next scheduled run.`);
   return newGoal;
 }
 
 export function updateResearchGoalStatus(id: string, status: ResearchGoal['status']): void {
-  const goal = researchQueue.find(g => g.id === id);
-  if (goal) {
-    goal.status = status;
-    persistResearchQueue();
-  }
+  const goal = state.researchQueue.find(g => g.id === id);
+  if (goal) { goal.status = status; persistResearchQueue(); }
 }
 
 export function removeResearchGoal(id: string): void {
-  researchQueue = researchQueue.filter(g => g.id !== id);
+  state.researchQueue = state.researchQueue.filter(g => g.id !== id);
   persistResearchQueue();
 }
 
@@ -44,7 +36,7 @@ export function removeResearchGoal(id: string): void {
 
 export function updateResearchQueueUI(): void {
   researchQueueList.innerHTML = '';
-  if (researchQueue.length === 0) {
+  if (state.researchQueue.length === 0) {
     const p = document.createElement('p');
     p.className = 'empty-state';
     p.textContent = 'No active research goals.';
@@ -52,7 +44,7 @@ export function updateResearchQueueUI(): void {
     return;
   }
 
-  researchQueue.forEach(g => {
+  state.researchQueue.forEach(g => {
     const card = document.createElement('div');
     card.className = 'item-card';
 
@@ -61,11 +53,9 @@ export function updateResearchQueueUI(): void {
 
     const info = document.createElement('div');
     info.style.maxWidth = '80%';
-
     const title = document.createElement('b');
     title.textContent = g.topic;
     info.appendChild(title);
-
     const meta = document.createElement('div');
     meta.className = 'meta';
     meta.textContent = `${g.template} • ${g.status} • ${new Date(g.created).toLocaleDateString()}`;
@@ -73,7 +63,6 @@ export function updateResearchQueueUI(): void {
 
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:4px;';
-
     const runBtn = document.createElement('button');
     runBtn.className = 'secondary-btn';
     runBtn.style.cssText = 'font-size:0.55rem;padding:2px 6px;';
@@ -83,7 +72,6 @@ export function updateResearchQueueUI(): void {
       createMessageElement('assistant', `[SYSTEM] Dispatched pipeline for: "${g.topic}". Spawning researcher subagents...`);
     };
     actions.appendChild(runBtn);
-
     const delBtn = document.createElement('button');
     delBtn.className = 'remove-btn';
     delBtn.textContent = '×';
@@ -115,15 +103,13 @@ export function initResearchQueue(): void {
   };
 
   runPipelineBtn.onclick = () => {
-    const pending = researchQueue.filter(g => g.status === 'pending');
+    const pending = state.researchQueue.filter(g => g.status === 'pending');
     if (pending.length === 0) {
       createMessageElement('assistant', '[SYSTEM] No pending research goals in queue.');
       return;
     }
     createMessageElement('assistant', `[SYSTEM] Running pipeline for ${pending.length} pending goal(s)...`);
-    pending.forEach(g => {
-      updateResearchGoalStatus(g.id, 'in_progress');
-    });
+    pending.forEach(g => updateResearchGoalStatus(g.id, 'in_progress'));
   };
 
   benchmarkTauBtn.onclick = () => {

@@ -7,7 +7,7 @@
 
 import { messagesContainer, modalEl, modalMessage, modalInputContainer, modalInput, modalConfirmBtn, modalCancelBtn, draftContainer, tabBtns, tabContents, viewTabs, viewPanes, commandPalette, paletteSearch, paletteResults, latticeGraph } from './dom';
 import { sanitize } from './security';
-import { engineConfig, activeDrafts, removeDraft } from './state';
+import { state, removeDraft } from './state';
 
 // ── Message Creation ──
 

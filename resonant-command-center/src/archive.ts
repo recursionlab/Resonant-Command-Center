@@ -4,16 +4,16 @@
 
 import { sanitize } from './security';
 import { archiveList, bibList, contextBadge, capacityFill, messagesContainer } from './dom';
-import { internalArchive, savedBibliography, MAX_CHARS_TOTAL, engineConfig } from './state';
+import { state, persistResearchQueue } from './state';
 import { marked } from 'marked';
 import { createMessageElement, showModal } from './ui';
 
 // ── Capacity ──
 
 function updateCapacity(): void {
-  const totalChars = internalArchive.reduce((acc, p) => acc + p.content.length, 0);
-  const usagePercent = Math.min(100, (totalChars / MAX_CHARS_TOTAL) * 100);
-  contextBadge.textContent = `${internalArchive.length} Papers Active`;
+  const totalChars = state.internalArchive.reduce((acc, p) => acc + p.content.length, 0);
+  const usagePercent = Math.min(100, (totalChars / state.MAX_CHARS_TOTAL) * 100);
+  contextBadge.textContent = `${state.internalArchive.length} Papers Active`;
   capacityFill.style.width = `${usagePercent}%`;
   capacityFill.style.background = usagePercent > 90 ? '#ef4444' : usagePercent > 70 ? '#f59e0b' : 'var(--accent-signal)';
 }
@@ -23,7 +23,7 @@ function updateCapacity(): void {
 export function updateArchiveUI(): void {
   updateCapacity();
 
-  if (internalArchive.length === 0) {
+  if (state.internalArchive.length === 0) {
     archiveList.innerHTML = '';
     const p = document.createElement('p');
     p.className = 'empty-state';
@@ -33,7 +33,7 @@ export function updateArchiveUI(): void {
   }
 
   archiveList.innerHTML = '';
-  internalArchive.forEach((item, idx) => {
+  state.internalArchive.forEach((item, idx) => {
     const card = document.createElement('div');
     card.className = `item-card ${item.status}`;
 
@@ -66,7 +66,7 @@ export function updateArchiveUI(): void {
     const delBtn = document.createElement('button');
     delBtn.className = 'remove-btn';
     delBtn.textContent = '×';
-    delBtn.onclick = () => removeArchive(idx);
+    delBtn.onclick = () => { state.internalArchive.splice(idx, 1); updateArchiveUI(); };
     actions.appendChild(delBtn);
 
     top.appendChild(info);
@@ -77,7 +77,7 @@ export function updateArchiveUI(): void {
 }
 
 export async function handleViewLogic(idx: number): Promise<void> {
-  const item = internalArchive[idx];
+  const item = state.internalArchive[idx];
   if (!item.summary) return;
 
   const parsedHtml = marked.parse(item.summary);
@@ -100,16 +100,11 @@ export async function handleViewLogic(idx: number): Promise<void> {
   messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
 }
 
-export function removeArchive(idx: number): void {
-  internalArchive.splice(idx, 1);
-  updateArchiveUI();
-}
-
 // ── Bibliography UI ──
 
 export function updateBibUI(): void {
   bibList.innerHTML = '';
-  if (savedBibliography.length === 0) {
+  if (state.savedBibliography.length === 0) {
     const p = document.createElement('p');
     p.className = 'empty-state';
     p.textContent = 'No sources saved yet.';
@@ -117,7 +112,7 @@ export function updateBibUI(): void {
     return;
   }
 
-  savedBibliography.forEach((item, idx) => {
+  state.savedBibliography.forEach((item, idx) => {
     const card = document.createElement('div');
     card.className = 'item-card';
 
@@ -136,7 +131,7 @@ export function updateBibUI(): void {
     const removeBtn = document.createElement('button');
     removeBtn.style.cssText = 'float:right;background:none;border:none;color:var(--text-muted);cursor:pointer;';
     removeBtn.textContent = '×';
-    removeBtn.onclick = () => removeReference(idx);
+    removeBtn.onclick = () => { state.savedBibliography.splice(idx, 1); updateBibUI(); };
     card.appendChild(removeBtn);
 
     bibList.appendChild(card);
@@ -144,21 +139,15 @@ export function updateBibUI(): void {
 }
 
 export function addReference(title: string, url: string): void {
-  if (!savedBibliography.some(ref => ref.url === url)) {
-    savedBibliography.push({ title, url });
+  if (!state.savedBibliography.some(ref => ref.url === url)) {
+    state.savedBibliography.push({ title, url });
     updateBibUI();
   }
-}
-
-export function removeReference(idx: number): void {
-  savedBibliography.splice(idx, 1);
-  updateBibUI();
 }
 
 // ── File Upload ──
 
 export function initFileUpload(): void {
-  const fileUpload = document.getElementById('file-upload') as HTMLInputElement;
   fileUpload.addEventListener('change', async (e) => {
     const files = (e.target as HTMLInputElement).files;
     if (!files) return;
@@ -171,14 +160,10 @@ export function initFileUpload(): void {
           continue;
         }
 
-        const newPaper: import('./state').Substrate = {
-          name: file.name,
-          content: text,
-          status: 'ingesting',
-        };
-        internalArchive.push(newPaper);
+        const newPaper = { name: file.name, content: text, status: 'ingesting' as const };
+        state.internalArchive.push(newPaper);
         updateArchiveUI();
-        ingestPaper(newPaper, engineConfig.orApiKey, engineConfig.orModel);
+        ingestPaper(newPaper, state.engineConfig.orApiKey, state.engineConfig.orModel);
       } catch (err) {
         console.error('Read Error', err);
       }
@@ -186,7 +171,7 @@ export function initFileUpload(): void {
   });
 }
 
-async function ingestPaper(paper: import('./state').Substrate, apiKey: string, model: string): Promise<void> {
+async function ingestPaper(paper: typeof state.internalArchive[0], apiKey: string, model: string): Promise<void> {
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -197,7 +182,7 @@ async function ingestPaper(paper: import('./state').Substrate, apiKey: string, m
         'X-Title': 'Monad Resonant Command Center',
       },
       body: JSON.stringify({
-        model: model,
+        model,
         messages: [{
           role: 'user',
           content: `[PROTOCOL: INDEXING SUBSTRATE]\nCOMMAND SUBSTRATE for THE MONAD: INFINITE LIBRARY.\nAnalyze the structural dominance and recursive potential of this text for the library index.\n\nStructure your response as follows:\n1. CORE DIRECTIVE: What is the primary purpose of this document?\n2. KNOWLEDGE VECTORS: What are the key themes and data points?\n3. STRUCTURAL WEIGHT: Which sections command the most importance?\n4. LATTICE DELTA (Δ): The unique contribution of this document to the global lattice.\n5. SINGULARITY: A one-sentence summary of the document's essence.\n\nKeep it high-density, technical, and absolute.\n\nSUBSTRATE:\n${paper.content.substring(0, 300000)}`,
@@ -211,8 +196,7 @@ async function ingestPaper(paper: import('./state').Substrate, apiKey: string, m
     }
 
     const data = await response.json();
-    const responseText = data.choices?.[0]?.message?.content || 'No response received via OpenRouter.';
-    paper.summary = responseText;
+    paper.summary = data.choices?.[0]?.message?.content || 'No response received via OpenRouter.';
     paper.status = 'ready';
   } catch (err: any) {
     console.error('Indexing failed', err);
