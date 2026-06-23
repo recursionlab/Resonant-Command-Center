@@ -1,0 +1,89 @@
+/**
+ * src/dom.ts — DOM element references.
+ *
+ * All DOM queries are centralized here. Modules import the refs they need.
+ * This avoids scattering document.getElementById calls throughout the codebase.
+ */
+
+export const messagesContainer = document.getElementById('messages')!;
+export const chatForm = document.getElementById('chat-form') as HTMLFormElement;
+export const userInput = document.getElementById('user-input') as HTMLTextAreaElement;
+export const sendBtn = document.getElementById('send-btn') as HTMLButtonElement;
+export const bibList = document.getElementById('bib-list')!;
+export const archiveList = document.getElementById('archive-list')!;
+export const contextBadge = document.getElementById('context-badge')!;
+export const fileUpload = document.getElementById('file-upload') as HTMLInputElement;
+export const capacityFill = document.getElementById('capacity-fill')!;
+export const synthesisBtn = document.getElementById('synthesis-btn')!;
+export const genesisOverlay = document.getElementById('genesis-overlay')!;
+export const genesisLog = document.getElementById('genesis-log')!;
+export const genesisProgress = document.getElementById('genesis-progress')!;
+
+// Right sidebar — Engine
+export const systemCommandInput = document.getElementById('system-command-input') as HTMLTextAreaElement;
+export const applySystemCommand = document.getElementById('apply-system-command')!;
+export const tempSlider = document.getElementById('temp-slider') as HTMLInputElement;
+export const tempVal = document.getElementById('temp-val')!;
+export const toppSlider = document.getElementById('topp-slider') as HTMLInputElement;
+export const toppVal = document.getElementById('topp-val')!;
+export const exportStateBtn = document.getElementById('export-state')!;
+export const tabBtns = document.querySelectorAll('.tab-btn');
+export const tabContents = document.querySelectorAll('.tab-content');
+
+// Right sidebar — Research
+export const addResearchBtn = document.getElementById('add-research-btn')!;
+export const researchTopic = document.getElementById('research-topic') as HTMLInputElement;
+export const researchTemplate = document.getElementById('research-template') as HTMLSelectElement;
+export const researchGoal = document.getElementById('research-goal') as HTMLTextAreaElement;
+export const researchQueueList = document.getElementById('research-queue-list')!;
+export const runPipelineBtn = document.getElementById('run-pipeline-btn')!;
+export const benchmarkTauBtn = document.getElementById('benchmark-tau-btn')!;
+
+// View tabs
+export const viewTabs = document.querySelectorAll('.view-tab');
+export const viewPanes = document.querySelectorAll('.view-pane');
+export const latticeGraph = document.getElementById('lattice-graph')!;
+
+// Workspace
+export const workspaceSelect = document.getElementById('workspace-select') as HTMLSelectElement;
+export const saveWorkspaceBtn = document.getElementById('save-workspace')!;
+export const generateKernelBtn = document.getElementById('generate-kernel')!;
+export const toolBtns = document.querySelectorAll('.tool-btn');
+
+// Command palette
+export const commandPalette = document.getElementById('command-palette')!;
+export const paletteSearch = document.getElementById('palette-search') as HTMLInputElement;
+export const paletteResults = document.getElementById('palette-results')!;
+
+// Mode
+export const modeDirect = document.getElementById('mode-direct')!;
+export const modeConsultant = document.getElementById('mode-consultant')!;
+export const draftsSection = document.getElementById('drafts-section')!;
+export const draftContainer = document.getElementById('draft-container')!;
+
+// Roadmap / Journal
+export const roadmapInput = document.getElementById('roadmap-input') as HTMLTextAreaElement;
+export const journalInput = document.getElementById('journal-input') as HTMLTextAreaElement;
+
+// OpenRouter
+export const orKeyInput = document.getElementById('or-key-input') as HTMLInputElement;
+export const orModelInput = document.getElementById('or-model-input') as HTMLInputElement;
+
+// Graph sidebar
+export const manualNodeId = document.getElementById('manual-node-id') as HTMLInputElement;
+export const manualNodeType = document.getElementById('manual-node-type') as HTMLSelectElement;
+export const manualAddNodeBtn = document.getElementById('manual-add-node-btn') as HTMLButtonElement;
+export const manualLinkSource = document.getElementById('manual-link-source') as HTMLSelectElement;
+export const manualLinkTarget = document.getElementById('manual-link-target') as HTMLSelectElement;
+export const manualLinkLabel = document.getElementById('manual-link-label') as HTMLInputElement;
+export const manualAddLinkBtn = document.getElementById('manual-add-link-btn') as HTMLButtonElement;
+export const focusContent = document.getElementById('focus-content')!;
+export const autonomousExtractBtn = document.getElementById('autonomous-extract-btn') as HTMLButtonElement;
+
+// Custom modal
+export const modalEl = document.getElementById('custom-modal')!;
+export const modalMessage = document.getElementById('modal-message')!;
+export const modalInputContainer = document.getElementById('modal-input-container')!;
+export const modalInput = document.getElementById('modal-input') as HTMLInputElement;
+export const modalConfirmBtn = document.getElementById('modal-confirm')!;
+export const modalCancelBtn = document.getElementById('modal-cancel')!;
