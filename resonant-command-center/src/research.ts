@@ -2,7 +2,7 @@
  * src/research.ts — Research queue management.
  */
 
-import { researchQueueList, addResearchBtn, researchTopic, researchTemplate, researchGoal, runPipelineBtn, benchmarkTauBtn } from './dom';
+import { researchQueueList, addResearchBtn, researchTopic, researchTemplate, researchGoal, runPipelineBtn, benchmarkTauBtn, exportQueueBtn } from './dom';
 import { state, persistResearchQueue, ResearchGoal } from './state';
 import { createMessageElement } from './ui';
 
@@ -85,7 +85,36 @@ export function updateResearchQueueUI(): void {
   });
 }
 
-// ── Event Listeners ──
+// ── Export Queue to Markdown ──
+
+export function exportQueueToMarkdown(): string {
+  const goals = state.researchQueue;
+  if (goals.length === 0) return '';
+
+  let md = '# Omnigent Research Queue\n\n';
+  md += `> Last exported: ${new Date().toISOString()}\n\n`;
+  md += '## Active Topics\n\n';
+
+  goals.filter(g => g.status !== 'complete').forEach(g => {
+    md += `- topic: "${g.topic}"\n`;
+    md += `  goal: "${g.goal}"\n`;
+    md += `  template: ${g.template}\n`;
+    md += `  wiki-page: ${g.wikiPage}\n`;
+    md += `  status: ${g.status}\n`;
+    md += `  priority: ${g.priority}\n`;
+    md += `  created: ${g.created}\n\n`;
+  });
+
+  const completed = goals.filter(g => g.status === 'complete');
+  if (completed.length > 0) {
+    md += '## Completed Topics\n\n';
+    completed.forEach(g => {
+      md += `- topic: "${g.topic}" — DONE (${g.wikiPage})\n`;
+    });
+  }
+
+  return md;
+}
 
 export function initResearchQueue(): void {
   addResearchBtn.onclick = () => {
@@ -114,5 +143,22 @@ export function initResearchQueue(): void {
 
   benchmarkTauBtn.onclick = () => {
     createMessageElement('assistant', '[SYSTEM] Running Softmax_τ benchmark...');
+  };
+
+  exportQueueBtn.onclick = () => {
+    const md = exportQueueToMarkdown();
+    if (!md) {
+      createMessageElement('assistant', '[SYSTEM] Queue is empty — nothing to export.');
+      return;
+    }
+    // Create a download blob
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'research_queue.md';
+    a.click();
+    URL.revokeObjectURL(url);
+    createMessageElement('assistant', `[SYSTEM] Exported ${state.researchQueue.length} goal(s) to research_queue.md. Save this file to D:\\CODEX\\Omnigent\\research_queue.md to sync with the cron pipeline.`);
   };
 }
