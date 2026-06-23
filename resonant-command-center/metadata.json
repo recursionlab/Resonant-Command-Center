@@ -1,5 +1,5 @@
 {
-  "name": "RESONANT COMMAND CENTER",
-  "description": "Direct Neural Interface for the Monad Engine. Live-edit core logic, engine parameters, and document substrates.",
+  "name": "OMNIGENT — Research Orchestration Engine",
+  "description": "Multi-agent research pipeline dashboard. Softmax_τ topological attention, cron-scheduled subagents, wiki synthesis, skill crystallization. VoltAgent design system.",
   "requestFramePermissions": []
 }

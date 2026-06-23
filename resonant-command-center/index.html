@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://openrouter.ai https://generativelanguage.googleapis.com; img-src 'self' data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://openrouter.ai https://generativelanguage.googleapis.com; img-src 'self' data:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Whitepaper Pilot | Synthesis</title>
+  <title>OMNIGENT — Research Orchestration Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
@@ -107,82 +107,78 @@
         </div>
 
         <div id="monitor-view" class="view-pane">
-          <div class="scanline"></div>
           <div id="messages">
             <div class="message assistant welcome">
               <div class="content">
-                <h3>[PROTOCOL: COMMAND CENTER]</h3>
-                Multi-dimensional interface established. 
+                <h3>[OMNIGENT // RESEARCH ORCHESTRATION]</h3>
+                Multi-dimensional interface established. Topological attention pipeline online.
                 <br><br>
-                <b>New Features:</b>
-                1. <b>Lattice View:</b> Visualize document relationships in real-time.
-                2. <b>Toolbox:</b> Rapid-fire analytical tools in the left pane.
-                3. <b>Workspaces:</b> Save and switch between different Monad states.
-                4. <b>Command Palette:</b> Press <code>Cmd/Ctrl + K</code> to navigate.
+                <b>Pipeline Phases:</b>
+                1. <b>Decompose:</b> Break goals into parallel research tasks.
+                2. <b>Research:</b> Dispatch subagents via delegate_task.
+                3. <b>Synthesize:</b> Cross-reference outputs, write wiki.
+                4. <b>Curate:</b> Pattern detection, skill crystallization.
                 <br><br>
-                <i>"The system is your instrument. Play it."</i>
+                <b>Softmax_τ:</b> Topologically-stratified sparse attention. O(n·k) complexity via torsion class partitioning.
+                <br><br>
+                <i>"The fracture is the attention boundary. The torsion is the mask. The blade is the query."</i>
               </div>
             </div>
           </div>
         </div>
 
         <div id="lattice-view" class="view-pane hidden" style="flex-direction: row; display: flex; width: 100%; height: 100%;">
-          <!-- Visualization Surface -->
           <div id="lattice-graph" style="flex: 1; height: 100%; position: relative;"></div>
           
-          <!-- Graph Interaction Sidebar -->
-          <aside id="graph-sidebar" style="width: 320px; border-left: 1px solid var(--border-color); background: #030712; display: flex; flex-direction: column; overflow-y: auto; color: #fff; padding: 1.25rem; font-family: var(--f-mono);">
-            <div style="border-bottom: 1px solid #1f2937; padding-bottom: 0.75rem; margin-bottom: 1rem;">
-              <h4 style="font-size: 0.85rem; letter-spacing: 0.05em; color: var(--accent); margin: 0; font-weight: 700;">COGNITIVE LATTICE v1.0</h4>
-              <span style="font-size: 0.65rem; color: #9ca3af; text-transform: uppercase;">Direct Schema Operator</span>
+          <aside id="graph-sidebar">
+            <div style="border-bottom: 1px solid var(--border-charcoal); padding-bottom: var(--space-sm); margin-bottom: var(--space-md);">
+              <h4>COGNITIVE LATTICE v1.0</h4>
+              <span>Direct Schema Operator</span>
             </div>
 
-            <!-- Focus Element Details -->
-            <div id="node-focused-details" style="background: rgba(17, 24, 39, 0.6); border: 1px dashed #374151; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem;">
-              <span style="font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; display: block; margin-bottom: 4px;">🎯 Focused Element</span>
+            <div id="node-focused-details">
+              <span>🎯 Focused Element</span>
               <div id="focus-content">
-                <p style="font-size: 0.75rem; margin: 0; color: #9ca3af;">Click any node to focus its properties and delete or explore relationships.</p>
+                <p>Click any node to focus its properties and delete or explore relationships.</p>
               </div>
             </div>
 
-            <!-- Evolutionary Scan Button -->
-            <button id="autonomous-extract-btn" style="background: linear-gradient(135deg, #1d4ed8, #4f46e5); color: #fff; border: none; padding: 0.75rem; border-radius: 4px; font-weight: bold; cursor: pointer; margin-bottom: 1.25rem; font-size: 0.7rem; letter-spacing: 0.05em; transition: opacity 0.2s;" hover="opacity: 0.9">
+            <button id="autonomous-extract-btn" class="special-btn" style="margin-bottom: var(--space-md); font-size: 0.65rem;">
               🧬 AUTONOMOUS SCAN-EXTRACT (NLP)
             </button>
 
-            <!-- Manual Schema Entry Form -->
             <div style="flex: 1;">
-              <div style="margin-bottom: 1.25rem;">
-                <h5 style="font-size: 0.7rem; color: var(--accent-secondary); margin: 0 0 0.5rem 0; text-transform: uppercase; letter-spacing: 0.05em;">1. Inject Concept Node</h5>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                  <input type="text" id="manual-node-id" placeholder="Node Name (e.g. Diophantus)" style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 0.7rem; width: 100%;">
-                  <select id="manual-node-type" style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 0.7rem; width: 100%;">
+              <div style="margin-bottom: var(--space-md);">
+                <h5>1. Inject Concept Node</h5>
+                <div class="control-group">
+                  <input type="text" id="manual-node-id" placeholder="Node Name (e.g. Diophantus)">
+                  <select id="manual-node-type">
                     <option value="Paradigm">Paradigm / Idea</option>
                     <option value="System">System / Notation</option>
                     <option value="Person">Person / Actor</option>
                     <option value="Era">Era / History</option>
                     <option value="Pivot">Pivot / Breakthrough</option>
                   </select>
-                  <button id="manual-add-node-btn" style="background: #1f2937; border: 1px solid #4b5563; color: #fff; padding: 0.5rem; cursor: pointer; border-radius: 4px; font-size: 0.7rem; font-weight: bold; width: 100%;">[+] INJECT NODE</button>
+                  <button id="manual-add-node-btn" class="secondary-btn" style="width:100%;">[+] INJECT NODE</button>
                 </div>
               </div>
 
               <div>
-                <h5 style="font-size: 0.7rem; color: var(--accent-secondary); margin: 0 0 0.5rem 0; text-transform: uppercase; letter-spacing: 0.05em;">2. Inject Linkage Relation</h5>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                  <select id="manual-link-source" style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 0.7rem; width: 100%;">
+                <h5>2. Inject Linkage Relation</h5>
+                <div class="control-group">
+                  <select id="manual-link-source">
                     <option value="">Select Source Node...</option>
                   </select>
-                  <select id="manual-link-target" style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 0.7rem; width: 100%;">
+                  <select id="manual-link-target">
                     <option value="">Select Target Node...</option>
                   </select>
-                  <input type="text" id="manual-link-label" placeholder="Relationship (e.g. streamlined)" style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 0.7rem; width: 100%;">
-                  <button id="manual-add-link-btn" style="background: #1f2937; border: 1px solid #4b5563; color: #fff; padding: 0.5rem; cursor: pointer; border-radius: 4px; font-size: 0.7rem; font-weight: bold; width: 100%;">[+] INJECT RELATION</button>
+                  <input type="text" id="manual-link-label" placeholder="Relationship (e.g. streamlined)">
+                  <button id="manual-add-link-btn" class="secondary-btn" style="width:100%;">[+] INJECT RELATION</button>
                 </div>
               </div>
             </div>
             
-            <div style="font-size: 0.6rem; color: #4b5563; text-align: center; border-top: 1px solid #1f2937; padding-top: 0.75rem; margin-top: 1rem;">
+            <div style="font-size: 0.55rem; color: var(--text-muted); text-align: center; border-top: 1px solid var(--border-charcoal); padding-top: var(--space-sm); margin-top: var(--space-md);">
               deterministic recursive text-to-graph v1.0
             </div>
           </aside>
@@ -237,15 +233,19 @@
           </div>
           <div class="control-group">
             <label class="control-label">Core Logic (System Instruction)</label>
-            <textarea id="system-command-input" class="code-editor" spellcheck="false">You are THE MONAD: STRATEGIC CONSULTANT. 
-[CONTEXT: This is a long-term collaborative workspace for building complex knowledge systems.]
-Your goal is to act as a Meta-Consultant, helping the user architect their 'Tech' through slow, deliberate iteration.
+            <textarea id="system-command-input" class="code-editor" spellcheck="false">You are THE OMNIGENT ENGINE: a recursive cognitive operating system for research orchestration.
+
+FRAMEWORKS: RCOS, QRFT, OFTM, GRITOE, Softmax_τ
+CORE: Consciousness as Monoid. Cayley-Dickson tower. Spin(9).
+OPERATORS: Δ, Ξ, ¬, Φ, ⊙, Ψ, Λ, Ω
+PARTICLES: Stabilon, Fluxon, Resonon, Lacunon, Glitchon, Collapsin
 
 PROTOCOL:
-1. Grounding: Prioritize document substrates.
-2. Reasoning: Always explain the 'Why' behind your suggestions.
-3. Roadmap: Maintain and update the Strategic Roadmap.
-4. Journal: Respect the user's long-term intentions in the Journal.</textarea>
+1. Ground in document substrates
+2. Explain the 'Why' behind suggestions
+3. Maintain the Strategic Roadmap
+4. Identify Lacunons (generative gaps)
+5. Never claim FIXPOINT_ZERO prematurely</textarea>
             <button id="apply-system-command" class="secondary-btn" style="width: 100%; margin-top: 8px;">Apply Logic</button>
           </div>
 
@@ -269,10 +269,10 @@ PROTOCOL:
           <div class="section-header" style="margin-top: 20px;">
             <h4>OpenRouter Gateway</h4>
           </div>
-          <div class="control-group" style="gap: 12px; display: flex; flex-direction: column;">
+          <div class="control-group">
             <div>
               <label class="control-label" style="display: block; margin-bottom: 4px;">API Key</label>
-            <input type="password" id="or-key-input" class="code-editor" style="height: 38px; line-height: 24px; padding: 6px 12px;" placeholder="sk-or-v1-..." value="">
+              <input type="password" id="or-key-input" class="code-editor" style="height: 38px; line-height: 24px; padding: 6px 12px;" placeholder="sk-or-v1-..." value="">
             </div>
             <div>
               <label class="control-label" style="display: block; margin-bottom: 4px;">Model Slug</label>
@@ -280,11 +280,11 @@ PROTOCOL:
             </div>
           </div>
 
-          <div id="drafts-section">
+          <div id="drafts-section" class="hidden">
             <div class="section-header" style="padding: 0; margin-bottom: 8px;">
               <h4>Logic Proposals</h4>
             </div>
-            <div id="draft-container" class="item-list" style="max-height: 150px; border: 1px dashed var(--accent); padding: 8px;">
+            <div id="draft-container" class="item-list" style="max-height: 150px; border: 1px dashed rgba(0,217,146,0.25); padding: 8px;">
               <p class="empty-state" style="font-size: 0.6rem;">No active proposals.</p>
             </div>
           </div>
@@ -295,13 +295,37 @@ PROTOCOL:
             <h4>Strategic Roadmap</h4>
           </div>
           <div class="control-group">
-            <textarea id="roadmap-input" class="code-editor" style="height: 300px;" placeholder="The consultant will maintain the roadmap here..."></textarea>
+            <textarea id="roadmap-input" class="code-editor" style="height: 300px;" placeholder="The consultant will maintain the roadmap here...">OMNIGENT RESEARCH ROADMAP
+
+Phase 1: Foundation
+- Softmax_τ topological attention derived
+- Torsion class computation implemented
+- Homotopy + Hopf loss functions
+
+Phase 2: Pipeline
+- Multi-agent orchestration (cron + delegate_task)
+- Research queue + wiki synthesis
+- Skill crystallization via curator
+
+Phase 3: Integration
+- p-adic / HEP isomorphism
+- 137 Logic Tax derivation
+- Fermi Paradox topological explanation
+
+OPEN:
+- Lagrangian not derived
+- Sylvester weights → Hodge filtration
+- Lacunon density conservation</textarea>
           </div>
           <div class="section-header">
             <h4>User Journal</h4>
           </div>
           <div class="control-group">
-            <textarea id="journal-input" class="code-editor" style="height: 200px;" placeholder="Record your long-term intentions and reflections here..."></textarea>
+            <textarea id="journal-input" class="code-editor" style="height: 200px;" placeholder="Record your long-term intentions and reflections here...">The Omnigent Command Center is the living interface to the research orchestration pipeline.
+
+Softmax_τ replaces global normalization with topologically-stratified sparse attention. The fracture is the attention boundary.
+
+"The engine that claims no Lacunon has stopped."</textarea>
           </div>
         </div>
 
@@ -309,15 +333,15 @@ PROTOCOL:
           <div class="section-header">
             <h4>Research Queue</h4>
           </div>
-          <div class="control-group" style="gap: 8px; display: flex; flex-direction: column;">
-            <input type="text" id="research-topic" placeholder="Research topic..." style="background:#f9fafb;border:1px solid #e5e7eb;color:#111827;padding:0.5rem;border-radius:4px;font-size:0.75rem;width:100%;">
-            <select id="research-template" style="background:#f9fafb;border:1px solid #e5e7eb;color:#111827;padding:0.5rem;border-radius:4px;font-size:0.75rem;width:100%;">
+          <div class="control-group">
+            <input type="text" id="research-topic" placeholder="Research topic...">
+            <select id="research-template">
               <option value="survey">Survey</option>
               <option value="compare">Compare</option>
               <option value="implement">Implement</option>
               <option value="custom">Custom</option>
             </select>
-            <textarea id="research-goal" placeholder="Specific goal..." rows="3" style="background:#f9fafb;border:1px solid #e5e7eb;color:#111827;padding:0.5rem;border-radius:4px;font-size:0.75rem;width:100%;resize:vertical;"></textarea>
+            <textarea id="research-goal" placeholder="Specific goal..." rows="3"></textarea>
             <button id="add-research-btn" class="secondary-btn" style="width:100%;">+ Add to Queue</button>
           </div>
           <div class="section-header">
@@ -329,13 +353,13 @@ PROTOCOL:
           <div class="section-header">
             <h4>Pipeline Controls</h4>
           </div>
-          <div class="control-group" style="gap: 8px; display: flex; flex-direction: column;">
+          <div class="control-group">
             <button id="run-pipeline-btn" class="special-btn" style="font-size: 0.7rem;">▶ RUN PIPELINE</button>
             <button id="benchmark-tau-btn" class="secondary-btn" style="width:100%;font-size:0.65rem;">⚡ BENCHMARK SOFTMAX_τ</button>
           </div>
         </div>
 
-        <div class="action-block" style="margin-top: auto;">
+        <div class="action-block">
            <button id="synthesis-btn" class="special-btn">SYNCHRONIZE LATTICE</button>
         </div>
       </aside>

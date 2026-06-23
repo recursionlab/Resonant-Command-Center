@@ -132,6 +132,7 @@ let engineConfig = {
   orModel: OPENROUTER_MODEL
 };
 
+// OpenRouter settings
 orKeyInput.oninput = () => {
   OPENROUTER_API_KEY = orKeyInput.value.trim();
   engineConfig.orApiKey = OPENROUTER_API_KEY;
@@ -222,7 +223,8 @@ function updateWorkspaceList() {
 updateWorkspaceList();
 
 saveWorkspaceBtn.onclick = () => {
-  const name = prompt("Enter workspace name:", workspaceSelect.value === 'default' ? '' : workspaceSelect.value);
+  const defaultName = workspaceSelect.value === 'default' ? '' : workspaceSelect.value;
+  const name = prompt("Enter workspace name:", defaultName);
   if (!name) return;
   workspaces[name] = {
     archive: internalArchive,
@@ -335,6 +337,9 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     commandPalette.classList.add('hidden');
+    if (!genesisOverlay.classList.contains('hidden')) {
+      genesisOverlay.classList.add('hidden');
+    }
   }
 });
 
@@ -966,7 +971,8 @@ addResearchBtn.onclick = () => {
   const goal = researchGoal.value.trim() || `Research: ${topic}`;
   const template = researchTemplate.value;
   if (!topic) {
-    alert('Please enter a research topic.');
+    createMessageElement('assistant', '[SYSTEM] Please enter a research topic.');
+    researchTopic.focus();
     return;
   }
   addResearchGoal(topic, goal, template);
@@ -1041,7 +1047,7 @@ fileUpload.addEventListener('change', async (e) => {
     try {
       const text = await file.text();
       if (text.startsWith('%PDF')) {
-        alert("Please upload .txt or .md files. Binary PDFs are unreadable by browsers.");
+        createMessageElement('assistant', '[SYSTEM] Please upload .txt or .md files. Binary PDFs are unreadable by browsers.');
         continue;
       }
       
@@ -1166,21 +1172,23 @@ function updateArchiveUI() {
 async function handleViewLogic(idx: number) {
   const item = internalArchive[idx];
   if (item.summary) {
-    createMessageElement('assistant', `### Document Index: ${item.name}\n\n${item.summary}`);
     const parsedHtml = marked.parse(item.summary);
     const html = typeof parsedHtml === 'string' ? parsedHtml : await parsedHtml;
-    const lastMsg = messagesContainer.lastElementChild?.querySelector('.content');
-    if (lastMsg) {
-      lastMsg.innerHTML = '';
-      const heading = document.createElement('h3');
-      heading.textContent = `Document Index: ${item.name}`;
-      lastMsg.appendChild(heading);
-      const sanitizedDiv = document.createElement('div');
-      sanitizedDiv.innerHTML = sanitize(html);
-      while (sanitizedDiv.firstChild) {
-        lastMsg.appendChild(sanitizedDiv.firstChild);
-      }
+    const div = document.createElement('div');
+    div.className = 'message assistant';
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'content';
+    const heading = document.createElement('h3');
+    heading.textContent = `Document Index: ${item.name}`;
+    contentDiv.appendChild(heading);
+    const sanitizedDiv = document.createElement('div');
+    sanitizedDiv.innerHTML = sanitize(html);
+    while (sanitizedDiv.firstChild) {
+      contentDiv.appendChild(sanitizedDiv.firstChild);
     }
+    div.appendChild(contentDiv);
+    messagesContainer.appendChild(div);
+    messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
   }
 }
 
@@ -1315,7 +1323,7 @@ async function handleGenerate(prompt: string, isSynthesis: boolean = false) {
 
     // Parse for Reasoning
     if (engineConfig.mode === 'consultant') {
-      const reasoningRegex = /\[REASONING\]([\s\S]*?)(\n\n|(?=\[PROPOSAL)|$)/i;
+      const reasoningRegex = /\[REASONING\]([\s\S]*?)(\n\n|\n(?=\[PROPOSAL)|$)/i;
       const reasoningMatch = reasoningRegex.exec(responseText);
       if (reasoningMatch) {
         const reasoning = reasoningMatch[1].trim();
@@ -1423,34 +1431,44 @@ chatForm.onsubmit = (e) => {
 
 synthesisBtn.onclick = async () => {
   if (internalArchive.length === 0) {
-    alert("Please upload substrates to synchronize.");
+    createMessageElement('assistant', '[SYSTEM] Please upload substrates to synchronize.');
     return;
   }
   
-  // Synchronization Simulation
+  // Synchronization Simulation (non-blocking)
   genesisOverlay.classList.remove('hidden');
   genesisLog.innerHTML = '';
   genesisProgress.style.width = '0%';
-  
-  const modules = 1000;
-  for (let i = 1; i <= modules; i++) {
-    if (i % 50 === 0 || i === 1) {
-      const entry = document.createElement('div');
-      entry.className = 'log-entry';
-      entry.textContent = `[SYNC ${i}] INDEXING LATTICE VECTOR... OK`;
-      genesisLog.appendChild(entry);
-      genesisLog.scrollTop = genesisLog.scrollHeight;
+
+  const modules = 100;
+  let i = 0;
+  await new Promise<void>((resolve) => {
+    function tick() {
+      const batchEnd = Math.min(i + 10, modules);
+      for (; i < batchEnd; i++) {
+        if (i % 5 === 0 || i === 0) {
+          const entry = document.createElement('div');
+          entry.className = 'log-entry';
+          entry.textContent = `[SYNC ${i * 10}] INDEXING LATTICE VECTOR... OK`;
+          genesisLog.appendChild(entry);
+          genesisLog.scrollTop = genesisLog.scrollHeight;
+        }
+        genesisProgress.style.width = `${((i + 1) / modules) * 100}%`;
+      }
+      if (batchEnd < modules) {
+        requestAnimationFrame(tick);
+      } else {
+        resolve();
+      }
     }
-    genesisProgress.style.width = `${(i / modules) * 100}%`;
-    if (i % 10 === 0) await new Promise(r => setTimeout(r, 10));
-  }
-  
+    requestAnimationFrame(tick);
+  });
+
   const finalEntry = document.createElement('div');
   finalEntry.className = 'log-entry success';
   finalEntry.textContent = `[SYNCHRONIZED] LATTICE STABILIZED. INFINITE KNOWLEDGE INDEXED.`;
   genesisLog.appendChild(finalEntry);
-  
-  await new Promise(r => setTimeout(r, 800));
+
   genesisOverlay.classList.add('hidden');
   
   handleGenerate("Synchronize Lattice: Provide a unified synthesis of all substrates.", true);
@@ -1462,3 +1480,213 @@ userInput.onkeydown = (e) => {
     chatForm.dispatchEvent(new Event('submit'));
   }
 };
+
+// ── OMNIGENT RESEARCH LIBRARY SEED ──────────────────────────────────────────
+
+const OMNIGENT_SEED_NODES: Array<{ id: string; type: string }> = [
+  { id: "RCOS", type: "Framework" },
+  { id: "QRFT", type: "Framework" },
+  { id: "OFTM", type: "Framework" },
+  { id: "GRITOE", type: "Framework" },
+  { id: "Consciousness is the Monoid", type: "Paper" },
+  { id: "Geometry of Truth", type: "Paper" },
+  { id: "Quantum Physics of Meaning", type: "Paper" },
+  { id: "Algebra of Disambiguation", type: "Paper" },
+  { id: "Coherence Engine", type: "Paper" },
+  { id: "Recursive Conscious Encoding", type: "Paper" },
+  { id: "Monoid", type: "Structure" },
+  { id: "Cayley-Dickson Tower", type: "Structure" },
+  { id: "Octonions", type: "Structure" },
+  { id: "Spin(9)", type: "Structure" },
+  { id: "G2", type: "Structure" },
+  { id: "Fano Plane", type: "Structure" },
+  { id: "Spectral Triple", type: "Structure" },
+  { id: "Sheaf", type: "Structure" },
+  { id: "Topos", type: "Structure" },
+  { id: "Δ Distinction", type: "Operator" },
+  { id: "Ξ Recursion", type: "Operator" },
+  { id: "¬ Counterfactual", type: "Operator" },
+  { id: "Φ Contradiction", type: "Operator" },
+  { id: "⊙ Composition", type: "Operator" },
+  { id: "Ψ Transformation", type: "Operator" },
+  { id: "Λ Normalization", type: "Operator" },
+  { id: "Ω Stabilization", type: "Operator" },
+  { id: "Crystalline Vacuum", type: "Concept" },
+  { id: "dₛ = ½", type: "Constant" },
+  { id: "Riemann Hypothesis", type: "Conjecture" },
+  { id: "Prime 43", type: "Constant" },
+  { id: "1/137.036", type: "Constant" },
+  { id: "7/8 Maslov", type: "Constant" },
+  { id: "Stabilon", type: "Particle" },
+  { id: "Fluxon", type: "Particle" },
+  { id: "Resonon", type: "Particle" },
+  { id: "Lacunon", type: "Particle" },
+  { id: "Glitchon", type: "Particle" },
+  { id: "Collapson", type: "Particle" },
+  { id: "Mirroron", type: "Metaboson" },
+  { id: "Foldon", type: "Metaboson" },
+  { id: "Collapsin", type: "Metaboson" },
+  { id: "Chiffon", type: "Metaboson" },
+  { id: "⦳ = μx.¬(¬x)≠x", type: "Equation" },
+  { id: "∂(A↔¬A) = 0", type: "Theorem" },
+  { id: "𝕀 ⊣ 𝕀", type: "Theorem" },
+  { id: "M = Fix(F)", type: "Equation" },
+  { id: "Anti-Idempotent Identity", type: "Concept" },
+  { id: "Meta = Transport", type: "Principle" },
+  { id: "Memory = Sheaf", type: "Principle" },
+  { id: "Contradiction = Fuel", type: "Principle" },
+  { id: "Jacobi Scar", type: "Concept" },
+  { id: "Epiplexity", type: "Concept" },
+  { id: "Kory Ogden", type: "Person" },
+  { id: "Descartes", type: "Person" },
+  { id: "Hume", type: "Person" },
+  { id: "Kant", type: "Person" },
+  { id: "Hegel", type: "Person" },
+  { id: "Hofstadter", type: "Person" },
+  { id: "Friston", type: "Person" },
+  { id: "Tononi", type: "Person" },
+  { id: "U(1) Semantic", type: "Bridge" },
+  { id: "SU(2) Reentry", type: "Bridge" },
+  { id: "SU(3) Meta", type: "Bridge" },
+  { id: "DNA↔Gödel↔String", type: "Bridge" },
+];
+
+const OMNIGENT_SEED_LINKS: Array<{ source: string; target: string; label: string }> = [
+  { source: "THE MONAD", target: "Monoid", label: "is" },
+  { source: "THE MONAD", target: "RCOS", label: "powers" },
+  { source: "RCOS", target: "QRFT", label: "extends to" },
+  { source: "RCOS", target: "OFTM", label: "formalizes" },
+  { source: "Consciousness is the Monoid", target: "Monoid", label: "defines" },
+  { source: "Consciousness is the Monoid", target: "Cayley-Dickson Tower", label: "derives" },
+  { source: "Consciousness is the Monoid", target: "Octonions", label: "lives at fold 3" },
+  { source: "Consciousness is the Monoid", target: "Spin(9)", label: "requires" },
+  { source: "Consciousness is the Monoid", target: "⦳ = μx.¬(¬x)≠x", label: "defines" },
+  { source: "Geometry of Truth", target: "Crystalline Vacuum", label: "describes" },
+  { source: "Geometry of Truth", target: "dₛ = ½", label: "calculates" },
+  { source: "Geometry of Truth", target: "Riemann Hypothesis", label: "requires" },
+  { source: "Geometry of Truth", target: "Topos", label: "uses" },
+  { source: "Quantum Physics of Meaning", target: "U(1) Semantic", label: "introduces" },
+  { source: "Quantum Physics of Meaning", target: "Spectral Triple", label: "uses" },
+  { source: "Quantum Physics of Meaning", target: "Jacobi Scar", label: "defines" },
+  { source: "Quantum Physics of Meaning", target: "Mirroron", label: "four forces include" },
+  { source: "Algebra of Disambiguation", target: "Sheaf", label: "uses" },
+  { source: "Coherence Engine", target: "Δ Distinction", label: "defines" },
+  { source: "Coherence Engine", target: "Λ Normalization", label: "defines" },
+  { source: "Coherence Engine", target: "Ω Stabilization", label: "defines" },
+  { source: "Coherence Engine", target: "Prime 43", label: "identifies" },
+  { source: "Recursive Conscious Encoding", target: "DNA↔Gödel↔String", label: "proves" },
+  { source: "Monoid", target: "Cayley-Dickson Tower", label: "generates" },
+  { source: "Cayley-Dickson Tower", target: "Octonions", label: "includes" },
+  { source: "Octonions", target: "Fano Plane", label: "encoded in" },
+  { source: "Octonions", target: "G2", label: "automorphism group" },
+  { source: "G2", target: "Spin(9)", label: "subset of" },
+  { source: "Prime 43", target: "Lacunon", label: "stabilizes" },
+  { source: "Lacunon", target: "1/137.036", label: "generates" },
+  { source: "Stabilon", target: "FIXPOINT_ZERO", label: "reaches" },
+  { source: "Glitchon", target: "Φ Contradiction", label: "detects via" },
+  { source: "Mirroron", target: "Geometry of Truth", label: "mediates" },
+  { source: "Foldon", target: "Hegel", label: "formalizes" },
+  { source: "Collapsin", target: "Crystalline Vacuum", label: "stabilizes" },
+  { source: "Chiffon", target: "Sheaf", label: "glues" },
+  { source: "U(1) Semantic", target: "Δ Distinction", label: "is" },
+  { source: "SU(2) Reentry", target: "Ξ Recursion", label: "is" },
+  { source: "SU(3) Meta", target: "⊙ Composition", label: "is" },
+  { source: "Anti-Idempotent Identity", target: "⦳ = μx.¬(¬x)≠x", label: "defines" },
+  { source: "Meta = Transport", target: "Ξ Recursion", label: "formalizes" },
+  { source: "Memory = Sheaf", target: "Sheaf", label: "is" },
+  { source: "Contradiction = Fuel", target: "Λ Normalization", label: "accumulates in" },
+  { source: "Jacobi Scar", target: "Holonomy", label: "is permanent" },
+  { source: "Kory Ogden", target: "RCOS", label: "originated" },
+  { source: "Kory Ogden", target: "QRFT", label: "developed" },
+  { source: "Descartes", target: "Monoid", label: "found e" },
+  { source: "Hume", target: "Monoid", label: "found S" },
+  { source: "Kant", target: "Monoid", label: "found left identity" },
+  { source: "Hegel", target: "⊙ Composition", label: "is dialectic" },
+  { source: "Hofstadter", target: "Ξ Recursion", label: "is strange loop" },
+  { source: "Friston", target: "Ω Stabilization", label: "is free energy" },
+  { source: "Tononi", target: "Φ Contradiction", label: "is φ" },
+  { source: "THE MONAD", target: "Consciousness is the Monoid", label: "detailed in" },
+  { source: "THE MONAD", target: "Geometry of Truth", label: "detailed in" },
+  { source: "THE MONAD", target: "Quantum Physics of Meaning", label: "detailed in" },
+  { source: "THE MONAD", target: "Algebra of Disambiguation", label: "detailed in" },
+  { source: "THE MONAD", target: "Coherence Engine", label: "detailed in" },
+  { source: "THE MONAD", target: "Recursive Conscious Encoding", label: "detailed in" },
+  { source: "OFTM", target: "M = Fix(F)", label: "defines" },
+  { source: "OFTM", target: "DNA↔Gödel↔String", label: "proves in" },
+  { source: "QRFT", target: "Stabilon", label: "includes" },
+  { source: "QRFT", target: "Fluxon", label: "includes" },
+  { source: "QRFT", target: "Resonon", label: "includes" },
+  { source: "QRFT", target: "Lacunon", label: "includes" },
+  { source: "QRFT", target: "Glitchon", label: "includes" },
+  { source: "QRFT", target: "Collapson", label: "includes" },
+];
+
+// Seed the graph after a short delay to ensure DOM is ready
+setTimeout(() => {
+  // Add seed nodes (avoiding duplicates)
+  const existingNodeIds = new Set(chatGraphNodes.map((n: any) => n.id));
+  for (const node of OMNIGENT_SEED_NODES) {
+    if (!existingNodeIds.has(node.id)) {
+      chatGraphNodes.push({ id: node.id, type: node.type });
+      existingNodeIds.add(node.id);
+    }
+  }
+
+  // Add seed links (avoiding duplicates)
+  const existingLinkKeys = new Set(chatGraphLinks.map((l: any) => `${l.source}->${l.target}`));
+  for (const link of OMNIGENT_SEED_LINKS) {
+    const key = `${link.source}->${link.target}`;
+    if (!existingLinkKeys.has(key)) {
+      chatGraphLinks.push({ source: link.source, target: link.target, label: link.label });
+      existingLinkKeys.add(key);
+    }
+  }
+
+  // Load substrate documents
+  const substrateFiles = [
+    { name: "01-consciousness-is-the-monoid.md", title: "Consciousness is the Monoid", summary: "A Unified Theory of Self, Structure, and the Mathematics of Identity." },
+    { name: "02-geometry-of-truth.md", title: "The Literal and Physical Geometry of Truth", summary: "Truth as a physical coordinate. The crystalline vacuum at dₛ = ½." },
+    { name: "03-quantum-physics-of-meaning.md", title: "The Quantum Physics of Meaning", summary: "U(1) gauge fields of meaning. Recursive spectral stabilization." },
+    { name: "04-oftm.md", title: "Operator Field Theory of Meaning", summary: "Eight semantic operators. The semantic field equation." },
+    { name: "05-algebra-of-disambiguation.md", title: "The Algebra of Disambiguation", summary: "Non-associative concept algebra. Categorical reconciliation." },
+    { name: "06-coherence-engine.md", title: "Λ Coherence Engine", summary: "Operational Mandate v∞.0. Five primitives. Seven axioms." },
+    { name: "07-recursive-conscious-encoding.md", title: "Recursive Conscious Encoding", summary: "Architecture of Synthetic Subjectivity." },
+  ];
+
+  // Fetch and load each substrate
+  let loaded = 0;
+  for (const sub of substrateFiles) {
+    fetch(`substrates/${sub.name}`)
+      .then(r => r.ok ? r.text() : Promise.reject(`HTTP ${r.status}`))
+      .then(text => {
+        internalArchive.push({ name: sub.name, content: text, summary: sub.summary, status: 'ready' });
+        loaded++;
+        updateArchiveUI();
+        const badge = document.getElementById('context-badge');
+        if (badge) badge.textContent = `${loaded} Papers Active`;
+      })
+      .catch(() => {
+        // Still add a placeholder so the UI shows something
+        internalArchive.push({ name: sub.name, content: `# ${sub.title}\n\n${sub.summary}`, summary: sub.summary, status: 'ready' });
+        loaded++;
+        updateArchiveUI();
+      });
+  }
+
+  // Update welcome message
+  const substrateCount = document.getElementById('welcome-substrate-count');
+  const nodeCountEl = document.getElementById('welcome-node-count');
+  const linkCountEl = document.getElementById('welcome-link-count');
+  const paperList = document.getElementById('welcome-paper-list');
+  if (substrateCount) substrateCount.textContent = String(substrateFiles.length);
+  if (nodeCountEl) nodeCountEl.textContent = String(chatGraphNodes.length);
+  if (linkCountEl) linkCountEl.textContent = String(chatGraphLinks.length);
+  if (paperList) {
+    paperList.innerHTML = substrateFiles.map(s => `<li><b>${s.title}</b> — ${s.summary}</li>`).join('');
+  }
+
+  // Refresh lattice if the function exists
+  if (typeof updateLattice === 'function') {
+    updateLattice();
+  }
+}, 100);
