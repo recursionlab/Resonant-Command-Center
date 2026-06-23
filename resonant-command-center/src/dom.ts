@@ -31,6 +31,7 @@ export const researchGoal = document.getElementById('research-goal') as HTMLText
 export const researchQueueList = document.getElementById('research-queue-list')!;
 export const runPipelineBtn = document.getElementById('run-pipeline-btn')!;
 export const benchmarkTauBtn = document.getElementById('benchmark-tau-btn')!;
+export const exportQueueBtn = document.getElementById('export-queue-btn')!;
 export const viewTabs = document.querySelectorAll('.view-tab');
 export const viewPanes = document.querySelectorAll('.view-pane');
 export const latticeGraph = document.getElementById('lattice-graph')!;
