@@ -39,18 +39,19 @@ export class NotionClient {
   private apiKey: string;
   private baseUrl = 'https://api.notion.com/v1';
   private notionVersion = '2025-09-03';
-  private delayMs = 300000; // 5 minutes between API calls
+  private delayMs: number;
 
-  constructor(apiKey?: string) {
+  constructor(apiKey?: string, delayMs = 300000) {
     this.apiKey = apiKey || process.env.NOTION_API_KEY || '';
+    this.delayMs = delayMs;
     if (!this.apiKey) {
       throw new Error('NotionClient: API key required. Set NOTION_API_KEY or pass to constructor.');
     }
   }
 
   private async request(method: string, path: string, body: any = null, enforceDelay = true): Promise<any> {
-    if (enforceDelay) {
-      await this.delay();
+    if (enforceDelay && this.delayMs > 0) {
+      await new Promise(r => setTimeout(r, this.delayMs));
     }
 
     const opts: RequestInit = {
@@ -78,6 +79,7 @@ export class NotionClient {
   }
 
   private async delay(): Promise<void> {
+    if (this.delayMs <= 0) return;
     await new Promise(r => setTimeout(r, this.delayMs));
   }
 

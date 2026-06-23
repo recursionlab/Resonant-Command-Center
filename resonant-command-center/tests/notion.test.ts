@@ -27,9 +27,8 @@ describe('NotionClient', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockFetch.mockReset();
-    // Use short delay for tests — override the 5-minute production default
-    client = new NotionClient('test-key-123');
-    client['delayMs'] = 10; // Override private field for fast tests
+    // Structural preemption: zero delay eliminates timer-based async issues entirely
+    client = new NotionClient('test-key-123', 0);
   });
 
   afterEach(() => {
@@ -86,20 +85,14 @@ describe('NotionClient', () => {
         properties: { Name: { title: [{ plain_text: 'Test' }] } },
       });
 
-      const promise = client.createPage('db-1', 'Test', '# Hello');
-      await vi.advanceTimersByTimeAsync(10);
-      const page = await promise;
+      const page = await client.createPage('db-1', 'Test', '# Hello');
       expect(page.id).toBe('page-123');
       expect(page.url).toBe('https://notion.so/page-123');
     });
 
     it('throws on 404 (database not shared)', async () => {
       mockResponse(404, { error: { message: 'Not found' } });
-      await expect(async () => {
-        const promise = client.createPage('db-1', 'Test', 'content');
-        await vi.advanceTimersByTimeAsync(10);
-        await promise;
-      }).rejects.toThrow('not found');
+      await expect(client.createPage('db-1', 'Test', 'content')).rejects.toThrow('not found');
     });
   });
 
@@ -114,13 +107,7 @@ describe('NotionClient', () => {
         { id: 'g2', topic: 'LoRA-GA', goal: 'Implement LoRA-GA', template: 'implement', status: 'pending', priority: 7, created: '2026-06-23' },
       ];
 
-      const promise = client.syncQueueToNotion(goals, 'db-research');
-
-      // Advance past two delays (10ms each in test)
-      await vi.advanceTimersByTimeAsync(10);
-      await vi.advanceTimersByTimeAsync(10);
-
-      const result = await promise;
+      const result = await client.syncQueueToNotion(goals, 'db-research');
 
       expect(result.synced).toBe(2);
       expect(result.pages[0].status).toBe('synced');
