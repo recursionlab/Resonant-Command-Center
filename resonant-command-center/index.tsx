@@ -825,7 +825,6 @@ setInterval(() => {
       chatHistory: messagesContainer.innerHTML
     };
     localStorage.setItem('monad_workspaces', JSON.stringify(workspaces));
-    console.log(`[SYSTEM] Auto-saved workspace: ${name}`);
   }
 }, 30000); // Every 30 seconds
 
