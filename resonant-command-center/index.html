@@ -7,15 +7,15 @@
   <title>Whitepaper Pilot | Synthesis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
   <div id="app">
     <header>
       <div class="logo-container">
-        <h1>RESONANT COMMAND CENTER</h1>
-        <p class="subtitle">The Monad // Multi-Dimensional Neural Interface</p>
+        <h1>OMNIGENT</h1>
+        <p class="subtitle">// RESEARCH ORCHESTRATION ENGINE</p>
       </div>
       <div class="header-actions">
         <div class="mode-toggle">
@@ -228,6 +228,7 @@
         <div class="sidebar-tabs">
           <button class="tab-btn active" data-tab="engine">Engine</button>
           <button class="tab-btn" data-tab="roadmap">Roadmap</button>
+          <button class="tab-btn" data-tab="research">Research</button>
         </div>
 
         <div id="engine-section" class="tab-content">
@@ -301,6 +302,36 @@ PROTOCOL:
           </div>
           <div class="control-group">
             <textarea id="journal-input" class="code-editor" style="height: 200px;" placeholder="Record your long-term intentions and reflections here..."></textarea>
+          </div>
+        </div>
+
+        <div id="research-section" class="tab-content hidden">
+          <div class="section-header">
+            <h4>Research Queue</h4>
+          </div>
+          <div class="control-group" style="gap: 8px; display: flex; flex-direction: column;">
+            <input type="text" id="research-topic" placeholder="Research topic..." style="background:#f9fafb;border:1px solid #e5e7eb;color:#111827;padding:0.5rem;border-radius:4px;font-size:0.75rem;width:100%;">
+            <select id="research-template" style="background:#f9fafb;border:1px solid #e5e7eb;color:#111827;padding:0.5rem;border-radius:4px;font-size:0.75rem;width:100%;">
+              <option value="survey">Survey</option>
+              <option value="compare">Compare</option>
+              <option value="implement">Implement</option>
+              <option value="custom">Custom</option>
+            </select>
+            <textarea id="research-goal" placeholder="Specific goal..." rows="3" style="background:#f9fafb;border:1px solid #e5e7eb;color:#111827;padding:0.5rem;border-radius:4px;font-size:0.75rem;width:100%;resize:vertical;"></textarea>
+            <button id="add-research-btn" class="secondary-btn" style="width:100%;">+ Add to Queue</button>
+          </div>
+          <div class="section-header">
+            <h4>Active Goals</h4>
+          </div>
+          <div id="research-queue-list" class="item-list" style="max-height: 200px;">
+            <p class="empty-state">No active research goals.</p>
+          </div>
+          <div class="section-header">
+            <h4>Pipeline Controls</h4>
+          </div>
+          <div class="control-group" style="gap: 8px; display: flex; flex-direction: column;">
+            <button id="run-pipeline-btn" class="special-btn" style="font-size: 0.7rem;">▶ RUN PIPELINE</button>
+            <button id="benchmark-tau-btn" class="secondary-btn" style="width:100%;font-size:0.65rem;">⚡ BENCHMARK SOFTMAX_τ</button>
           </div>
         </div>
 

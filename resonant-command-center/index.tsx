@@ -836,6 +836,168 @@ tabBtns.forEach(btn => {
   });
 });
 
+// ── Research Queue Management ──
+interface ResearchGoal {
+  id: string;
+  topic: string;
+  goal: string;
+  template: string;
+  wikiPage: string;
+  status: 'pending' | 'in_progress' | 'complete' | 'blocked';
+  priority: number;
+  created: string;
+}
+
+let researchQueue: ResearchGoal[] = loadResearchQueue();
+
+function loadResearchQueue(): ResearchGoal[] {
+  try {
+    const stored = localStorage.getItem('omnigent_research_queue');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveResearchQueue() {
+  localStorage.setItem('omnigent_research_queue', JSON.stringify(researchQueue));
+  updateResearchQueueUI();
+}
+
+function addResearchGoal(topic: string, goal: string, template: string) {
+  const id = 'goal-' + Date.now().toString(36);
+  const wikiPage = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const newGoal: ResearchGoal = {
+    id,
+    topic,
+    goal,
+    template,
+    wikiPage,
+    status: 'pending',
+    priority: 5,
+    created: new Date().toISOString(),
+  };
+  researchQueue.push(newGoal);
+  saveResearchQueue();
+  createMessageElement('assistant', `[SYSTEM] Research goal added to queue: "${topic}" (${template}). The cron pipeline will process it at the next scheduled run.`);
+  return newGoal;
+}
+
+function updateResearchGoalStatus(id: string, status: ResearchGoal['status']) {
+  const goal = researchQueue.find(g => g.id === id);
+  if (goal) {
+    goal.status = status;
+    saveResearchQueue();
+  }
+}
+
+function removeResearchGoal(id: string) {
+  researchQueue = researchQueue.filter(g => g.id !== id);
+  saveResearchQueue();
+}
+
+function updateResearchQueueUI() {
+  const list = document.getElementById('research-queue-list')!;
+  if (researchQueue.length === 0) {
+    list.innerHTML = '';
+    const p = document.createElement('p');
+    p.className = 'empty-state';
+    p.textContent = 'No active research goals.';
+    list.appendChild(p);
+    return;
+  }
+
+  list.innerHTML = '';
+  researchQueue.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'item-card';
+
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;';
+
+    const info = document.createElement('div');
+    info.style.maxWidth = '80%';
+
+    const title = document.createElement('b');
+    title.textContent = g.topic;
+    info.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = `${g.template} • ${g.status} • ${new Date(g.created).toLocaleDateString()}`;
+    info.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:4px;';
+
+    const runBtn = document.createElement('button');
+    runBtn.className = 'secondary-btn';
+    runBtn.style.cssText = 'font-size:0.55rem;padding:2px 6px;';
+    runBtn.textContent = '▶ Run';
+    runBtn.onclick = () => {
+      updateResearchGoalStatus(g.id, 'in_progress');
+      createMessageElement('assistant', `[SYSTEM] Dispatched pipeline for: "${g.topic}". Spawning researcher subagents...`);
+      // Dispatch via the chat system
+      handleGenerate(`[PIPELINE] Execute research pipeline for topic: "${g.topic}" with template: "${g.template}". Goal: ${g.goal}`);
+    };
+    actions.appendChild(runBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'remove-btn';
+    delBtn.textContent = '×';
+    delBtn.onclick = () => removeResearchGoal(g.id);
+    actions.appendChild(delBtn);
+
+    top.appendChild(info);
+    top.appendChild(actions);
+    card.appendChild(top);
+    list.appendChild(card);
+  });
+}
+
+// Research queue event listeners
+const addResearchBtn = document.getElementById('add-research-btn')!;
+const researchTopic = document.getElementById('research-topic') as HTMLInputElement;
+const researchTemplate = document.getElementById('research-template') as HTMLSelectElement;
+const researchGoal = document.getElementById('research-goal') as HTMLTextAreaElement;
+
+addResearchBtn.onclick = () => {
+  const topic = researchTopic.value.trim();
+  const goal = researchGoal.value.trim() || `Research: ${topic}`;
+  const template = researchTemplate.value;
+  if (!topic) {
+    alert('Please enter a research topic.');
+    return;
+  }
+  addResearchGoal(topic, goal, template);
+  researchTopic.value = '';
+  researchGoal.value = '';
+};
+
+const runPipelineBtn = document.getElementById('run-pipeline-btn')!;
+runPipelineBtn.onclick = () => {
+  const pending = researchQueue.filter(g => g.status === 'pending');
+  if (pending.length === 0) {
+    createMessageElement('assistant', '[SYSTEM] No pending research goals in queue.');
+    return;
+  }
+  createMessageElement('assistant', `[SYSTEM] Running pipeline for ${pending.length} pending goal(s)...`);
+  pending.forEach(g => {
+    updateResearchGoalStatus(g.id, 'in_progress');
+    handleGenerate(`[PIPELINE] Execute research pipeline for topic: "${g.topic}" with template: "${g.template}". Goal: ${g.goal}`);
+  });
+};
+
+const benchmarkTauBtn = document.getElementById('benchmark-tau-btn')!;
+benchmarkTauBtn.onclick = () => {
+  createMessageElement('assistant', '[SYSTEM] Running Softmax_τ benchmark... This will compare topological attention vs standard attention on random input.');
+  // Run a benchmark via the chat
+  handleGenerate('[BENCHMARK] Run Softmax_τ benchmark: compare TauAttention vs standard softmax attention. Report time per iteration, parameter count, and speedup factor.');
+};
+
+// Initialize research queue UI
+updateResearchQueueUI();
+
 // Parameter Logic
 tempSlider.oninput = () => {
   engineConfig.temperature = parseFloat(tempSlider.value);
