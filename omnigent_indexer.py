@@ -36,7 +36,15 @@ SOURCES = {
 }
 
 SKIP_DIRS = {'.git', '.hermes', '.vite', '__pycache__', 'node_modules', '.index'}
-SKIP_EXTS = {'.png', '.jpg', '.jpeg', '.gif', '.ico', '.pdf', '.zip', '.tar', '.gz'}
+SKIP_EXTS = {'.png', '.jpg', '.jpeg', '.gif', '.ico', '.pdf', '.zip', '.tar', '.gz',
+             '.pyc', '.pyo', '.so', '.dll', '.exe', '.bin', '.wasm'}
+# Only index text-like files (not code, which pollutes the index with non-prose)
+TEXT_EXTS = {'.md', '.txt', '.rst', '.html', '.htm', '.json', '.yaml', '.yml',
+             '.toml', '.cfg', '.ini', '.csv', '.tsv', '.xml', '.svg',
+             '.py', '.js', '.ts', '.tsx', '.jsx', '.sh', '.bash', '.zsh',
+             '.sql', '.r', '.rb', '.go', '.rs', '.java', '.c', '.cpp', '.h',
+             '.hpp', '.swift', '.kt', '.scala', '.lua', '.pl', '.php',
+             '.tex', '.bib', '.org', '.wiki', '.adoc'}
 CHUNK_SIZE = 1000  # characters — larger for FTS5 (it handles longer text better)
 CHUNK_OVERLAP = 100
 
@@ -82,7 +90,11 @@ def get_db() -> sqlite3.Connection:
 # ── Helpers ──
 
 def file_id(path: Path) -> str:
-    return hashlib.md5(str(path.relative_to(ROOT)).encode()).hexdigest()[:16]
+    try:
+        return hashlib.md5(str(path.relative_to(ROOT)).encode()).hexdigest()[:16]
+    except ValueError:
+        # Path not under ROOT (symlink or misconfigured) — use absolute path
+        return hashlib.md5(str(path.resolve()).encode()).hexdigest()[:16]
 
 def chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
     if len(text) <= size:
@@ -102,7 +114,11 @@ def should_skip(path: Path) -> bool:
     for part in parts:
         if part in SKIP_DIRS:
             return True
+    # Skip binary/unsupported extensions
     if path.suffix.lower() in SKIP_EXTS:
+        return True
+    # Only index known text extensions (whitelist approach)
+    if path.suffix.lower() not in TEXT_EXTS:
         return True
     try:
         if path.stat().st_size > 5 * 1024 * 1024:
@@ -152,12 +168,16 @@ def cmd_index(filter_folder: str = None):
 
                 fid = file_id(filepath)
                 
-                # Check if already indexed
+                # Check if already indexed and not modified since
                 existing = conn.execute(
-                    "SELECT file_id FROM file_meta WHERE file_id = ?", (fid,)
+                    "SELECT file_id, modified FROM file_meta WHERE file_id = ?", (fid,)
                 ).fetchone()
                 if existing:
-                    continue
+                    mtime = datetime.fromtimestamp(filepath.stat().st_mtime).isoformat()
+                    if existing[1] >= mtime:
+                        continue
+                    # File modified — delete old chunks and re-index
+                    conn.execute("DELETE FROM documents WHERE file_id LIKE ?", (fid + '%',))
 
                 chunks = chunk_text(content)
                 if not chunks:
@@ -218,121 +238,139 @@ def cmd_index(filter_folder: str = None):
 
 def cmd_query(args):
     conn = get_db()
-    count = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
-    if count == 0:
-        print("[QUERY] Index is empty. Run: python indexer_v2.py index")
-        return
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        if count == 0:
+            print("[QUERY] Index is empty. Run: python indexer_v2.py index")
+            return
 
-    # Use FTS5's BM25 ranking
-    query = args.query
-    results = conn.execute(
-        """SELECT source, file, chunk_index, total_chunks, 
-                  snippet(documents, 0, '[', ']', '...', 10) as snippet,
-                  bm25(documents) as score
-           FROM documents 
-           WHERE documents MATCH ?
-           ORDER BY bm25(documents)
-           LIMIT ?""",
-        (query, args.top_k)
-    ).fetchall()
+        # Sanitize FTS5 query: strip special characters that cause syntax errors
+        import re
+        query = re.sub(r'["*^()]', '', args.query).strip()
+        if not query:
+            print("[QUERY] Query contained only FTS5 special characters — nothing to search.")
+            return
 
-    print(f"[QUERY] \"{query}\" — {count:,} chunks in index, top {len(results)} results:\n")
+        try:
+            results = conn.execute(
+                """SELECT source, file, chunk_index, total_chunks, 
+                          snippet(documents, 0, '[', ']', '...', 10) as snippet,
+                          bm25(documents) as score
+                   FROM documents 
+                   WHERE documents MATCH ?
+                   ORDER BY bm25(documents)
+                   LIMIT ?""",
+                (query, args.top_k)
+            ).fetchall()
+        except sqlite3.OperationalError as e:
+            print(f"[QUERY] FTS5 query error: {e}")
+            print("  Try simpler keywords without special characters.")
+            return
 
-    for i, (source, file, chunk_idx, total, snippet, score) in enumerate(results, 1):
-        print(f"  [{i}] {source}/{file} (chunk {chunk_idx}/{total}) | BM25: {score:.2f}")
-        print(f"      {snippet}")
-        print()
+        print(f"[QUERY] \"{query}\" — {count:,} chunks in index, top {len(results)} results:\n")
 
-    conn.close()
+        for i, (source, file, chunk_idx, total, snippet, score) in enumerate(results, 1):
+            print(f"  [{i}] {source}/{file} (chunk {chunk_idx}/{total}) | BM25: {score:.2f}")
+            print(f"      {snippet}")
+            print()
+    finally:
+        conn.close()
 
 def cmd_stats(args):
     conn = get_db()
-    count = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
-    file_count = conn.execute("SELECT COUNT(*) FROM file_meta").fetchone()[0]
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        file_count = conn.execute("SELECT COUNT(*) FROM file_meta").fetchone()[0]
 
-    if count == 0:
-        print("[STATS] Index is empty.")
-        return
+        if count == 0:
+            print("[STATS] Index is empty.")
+            return
 
-    print(f"[STATS] Omnigent Knowledge Index (v2)")
-    print(f"  Total chunks: {count:,}")
-    print(f"  Total files: {file_count:,}")
-    if DB_PATH.exists():
-        print(f"  Database size: {DB_PATH.stat().st_size / 1024 / 1024:.1f} MB")
-    print()
+        print(f"[STATS] Omnigent Knowledge Index (v2)")
+        print(f"  Total chunks: {count:,}")
+        print(f"  Total files: {file_count:,}")
+        if DB_PATH.exists():
+            print(f"  Database size: {DB_PATH.stat().st_size / 1024 / 1024:.1f} MB")
+        print()
 
-    rows = conn.execute(
-        """SELECT source, COUNT(*) as files, 
-                  SUM(total_chunks) as chunks
-           FROM file_meta GROUP BY source ORDER BY chunks DESC"""
-    ).fetchall()
+        rows = conn.execute(
+            """SELECT source, COUNT(*) as files, 
+                      SUM(total_chunks) as chunks
+               FROM file_meta GROUP BY source ORDER BY chunks DESC"""
+        ).fetchall()
 
-    print(f"  Per source:")
-    for source, files, chunks in rows:
-        print(f"    {source}: {chunks:,} chunks from {files:,} files")
-
-    conn.close()
+        print(f"  Per source:")
+        for source, files, chunks in rows:
+            print(f"    {source}: {chunks:,} chunks from {files:,} files")
+    finally:
+        conn.close()
 
 def cmd_export_cmd_center(args):
     """Export index summary for the Command Center."""
     conn = get_db()
-    count = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
-    file_count = conn.execute("SELECT COUNT(*) FROM file_meta").fetchone()[0]
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        file_count = conn.execute("SELECT COUNT(*) FROM file_meta").fetchone()[0]
 
-    if count == 0:
-        print("[EXPORT] Index is empty.")
-        return
+        if count == 0:
+            print("[EXPORT] Index is empty.")
+            return
 
-    rows = conn.execute(
-        """SELECT source, filepath, total_chunks, file_size, indexed_at 
-           FROM file_meta ORDER BY source, filepath"""
-    ).fetchall()
+        rows = conn.execute(
+            """SELECT source, filepath, total_chunks, file_size, indexed_at 
+               FROM file_meta ORDER BY source, filepath"""
+        ).fetchall()
 
-    manifest = {
-        "indexed_at": datetime.now().isoformat(),
-        "total_chunks": count,
-        "total_files": file_count,
-        "format": "fts5_sqlite",
-        "sources": {},
-        "files": [],
-    }
+        manifest = {
+            "indexed_at": datetime.now().isoformat(),
+            "total_chunks": count,
+            "total_files": file_count,
+            "format": "fts5_sqlite",
+            "sources": {},
+            "files": [],
+        }
 
-    for source, filepath, chunks, size, indexed_at in rows:
-        if source not in manifest["sources"]:
-            manifest["sources"][source] = {"files": 0, "chunks": 0}
-        manifest["sources"][source]["files"] += 1
-        manifest["sources"][source]["chunks"] += chunks
-        
-        manifest["files"].append({
-            "source": source,
-            "path": filepath,
-            "chunks": chunks,
-            "size": size,
-            "indexed_at": indexed_at,
-        })
+        for source, filepath, chunks, size, indexed_at in rows:
+            if source not in manifest["sources"]:
+                manifest["sources"][source] = {"files": 0, "chunks": 0}
+            manifest["sources"][source]["files"] += 1
+            manifest["sources"][source]["chunks"] += chunks
+            
+            manifest["files"].append({
+                "source": source,
+                "path": filepath,
+                "chunks": chunks,
+                "size": size,
+                "indexed_at": indexed_at,
+            })
 
-    out_path = ROOT / ".index" / "manifest_v2.json"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(manifest, indent=2))
-    print(f"[EXPORT] Manifest saved to {out_path}")
-    print(f"  {file_count:,} files, {count:,} chunks, {len(manifest['sources'])} sources")
+        out_path = ROOT / ".index" / "manifest_v2.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(manifest, indent=2))
+        print(f"[EXPORT] Manifest saved to {out_path}")
+        print(f"  {file_count:,} files, {count:,} chunks, {len(manifest['sources'])} sources")
 
-    # Show sample files per source
-    print(f"\n  Sample files per source:")
-    for source, stats in manifest["sources"].items():
-        sample = [f["path"] for f in manifest["files"] if f["source"] == source][:3]
-        print(f"    {source}:")
-        for s in sample:
-            print(f"      - {s}")
-        if stats["files"] > 3:
-            print(f"      ... and {stats['files'] - 3} more")
-
-    conn.close()
+        # Show sample files per source
+        print(f"\n  Sample files per source:")
+        for source, stats in manifest["sources"].items():
+            sample = [f["path"] for f in manifest["files"] if f["source"] == source][:3]
+            print(f"    {source}:")
+            for s in sample:
+                print(f"      - {s}")
+            if stats["files"] > 3:
+                print(f"      ... and {stats['files'] - 3} more")
+    finally:
+        conn.close()
 
 def cmd_reset(args):
     """Reset the index."""
     if DB_PATH.exists():
         DB_PATH.unlink()
+    # Also clean up WAL/SHM sidecar files
+    for suffix in ("-wal", "-shm"):
+        sidecar = Path(str(DB_PATH) + suffix)
+        if sidecar.exists():
+            sidecar.unlink()
     print("[RESET] Index cleared.")
 
 # ── Main ──
