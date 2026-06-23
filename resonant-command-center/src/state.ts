@@ -91,33 +91,10 @@ export const state = {
   activeChatHistory: [] as ChatMessage[],
   activeChat: null as unknown,
 
-  // Knowledge Graph
-  chatGraphNodes: [
-    { id: 'Arithmetic', type: 'Paradigm' },
-    { id: 'Algebra', type: 'Paradigm' },
-    { id: 'Antiquity', type: 'Era' },
-    { id: 'Greek Numeral System', type: 'System' },
-    { id: 'Roman Numerals', type: 'System' },
-    { id: 'Hindu-Arabic Numerals', type: 'System' },
-    { id: 'Sampi', type: 'Entity' },
-    { id: 'Archimedes', type: 'Person' },
-    { id: 'Diophantus', type: 'Person' },
-    { id: 'Symbolic Notation', type: 'Pivot' },
-    { id: 'Syncopated Algebra', type: 'Paradigm' },
-  ] as GraphNode[],
+  // Knowledge Graph — populated by src/graph.ts seed data on first load
+  chatGraphNodes: [] as GraphNode[],
 
-  chatGraphLinks: [
-    { source: 'Antiquity', target: 'Greek Numeral System', label: 'prevalent in' },
-    { source: 'Antiquity', target: 'Roman Numerals', label: 'prevalent in' },
-    { source: 'Greek Numeral System', target: 'Sampi', label: 'retained' },
-    { source: 'Roman Numerals', target: 'Algebra', label: 'hindered development of' },
-    { source: 'Greek Numeral System', target: 'Algebra', label: 'hindered development of' },
-    { source: 'Antiquity', target: 'Syncopated Algebra', label: 'limited to' },
-    { source: 'Hindu-Arabic Numerals', target: 'Algebra', label: 'unlocked symbolic' },
-    { source: 'Symbolic Notation', target: 'Algebra', label: 'streamlined' },
-    { source: 'Syncopated Algebra', target: 'Diophantus', label: 'used by' },
-    { source: 'Arithmetic', target: 'Hindu-Arabic Numerals', label: 'encoded by' },
-  ] as GraphLink[],
+  chatGraphLinks: [] as GraphLink[],
 
   selectedGraphElement: null as { type: 'node' | 'link'; id: string } | null,
 
