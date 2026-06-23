@@ -246,7 +246,12 @@ def cmd_query(args):
 
         # Sanitize FTS5 query: strip special characters that cause syntax errors
         import re
-        query = re.sub(r'["*^()]', '', args.query).strip()
+        # Remove FTS5 special chars: " * ^ ( ) - + NEAR AND NOT OR
+        # Replace hyphens and operators with spaces, then rejoin as implicit AND
+        query = re.sub(r'["*^()+\-]', ' ', args.query)
+        # Remove standalone FTS5 keywords (AND, NOT, OR, NEAR) to avoid syntax errors
+        query = re.sub(r'\b(AND|NOT|OR|NEAR)\b', '', query, flags=re.IGNORECASE)
+        query = re.sub(r'\s+', ' ', query).strip()
         if not query:
             print("[QUERY] Query contained only FTS5 special characters — nothing to search.")
             return
