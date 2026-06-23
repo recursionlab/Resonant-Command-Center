@@ -111,6 +111,11 @@ export const state = {
   // Drafts
   activeDrafts: [] as Array<{ id: string; title: string; content: string }>,
 
+  // Notion Sync
+  notionSyncEnabled: false,
+  notionResearchDbId: '',
+  notionWikiDbId: '',
+
   // Constants
   MAX_CHARS_TOTAL: 4_000_000,
 };
@@ -129,6 +134,14 @@ function loadResearchQueue(): ResearchGoal[] {
 state.researchQueue = loadResearchQueue();
 state.workspaces = safeJsonParse(localStorage.getItem('monad_workspaces'), {});
 
+// Restore Notion config
+const notionConfig = safeJsonParse(localStorage.getItem('omnigent_notion_config'), null);
+if (notionConfig) {
+  state.notionSyncEnabled = notionConfig.enabled ?? false;
+  state.notionResearchDbId = notionConfig.researchDbId ?? '';
+  state.notionWikiDbId = notionConfig.wikiDbId ?? '';
+}
+
 // ── Persistence Helpers ──
 
 export function persistResearchQueue(): void {
@@ -137,6 +150,14 @@ export function persistResearchQueue(): void {
 
 export function persistWorkspaces(): void {
   localStorage.setItem('monad_workspaces', JSON.stringify(state.workspaces));
+}
+
+export function persistNotionConfig(): void {
+  localStorage.setItem('omnigent_notion_config', JSON.stringify({
+    enabled: state.notionSyncEnabled,
+    researchDbId: state.notionResearchDbId,
+    wikiDbId: state.notionWikiDbId,
+  }));
 }
 
 export function removeDraft(id: string): void {

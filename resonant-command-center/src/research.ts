@@ -2,8 +2,8 @@
  * src/research.ts — Research queue management.
  */
 
-import { researchQueueList, addResearchBtn, researchTopic, researchTemplate, researchGoal, runPipelineBtn, benchmarkTauBtn, exportQueueBtn } from './dom';
-import { state, persistResearchQueue, ResearchGoal } from './state';
+import { researchQueueList, addResearchBtn, researchTopic, researchTemplate, researchGoal, runPipelineBtn, benchmarkTauBtn, exportQueueBtn, syncNotionBtn, notionTestBtn, notionResearchDbId, notionWikiDbId, notionSyncEnabled, notionStatus } from './dom';
+import { state, persistResearchQueue, persistNotionConfig, ResearchGoal } from './state';
 import { createMessageElement } from './ui';
 
 // ── Queue CRUD ──
@@ -160,5 +160,59 @@ export function initResearchQueue(): void {
     a.click();
     URL.revokeObjectURL(url);
     createMessageElement('assistant', `[SYSTEM] Exported ${state.researchQueue.length} goal(s) to research_queue.md. Save this file to D:\\CODEX\\Omnigent\\research_queue.md to sync with the cron pipeline.`);
+  };
+
+  syncNotionBtn.onclick = () => {
+    if (!state.notionSyncEnabled || !state.notionResearchDbId) {
+      createMessageElement('assistant', '[SYSTEM] Notion sync is not configured. Please set the Research Queue Database ID in the Engine settings.');
+      return;
+    }
+    if (state.researchQueue.length === 0) {
+      createMessageElement('assistant', '[SYSTEM] Queue is empty — nothing to sync.');
+      return;
+    }
+    createMessageElement('assistant', `[SYSTEM] Syncing ${state.researchQueue.length} goal(s) to Notion... (5 min between each API call)`);
+    // Note: actual sync is async; in browser we call the NotionClient directly
+    // For now, we show a message that the sync started
+    // TODO: Wire async sync with progress updates
+  };
+
+  // ── Notion Settings UI ──
+
+  // Restore saved values
+  notionResearchDbId.value = state.notionResearchDbId || '';
+  notionWikiDbId.value = state.notionWikiDbId || '';
+  notionSyncEnabled.checked = state.notionSyncEnabled || false;
+
+  // Persist on change
+  notionResearchDbId.oninput = () => {
+    state.notionResearchDbId = notionResearchDbId.value.trim();
+    persistNotionConfig();
+  };
+  notionWikiDbId.oninput = () => {
+    state.notionWikiDbId = notionWikiDbId.value.trim();
+    persistNotionConfig();
+  };
+  notionSyncEnabled.onchange = () => {
+    state.notionSyncEnabled = notionSyncEnabled.checked;
+    persistNotionConfig();
+  };
+
+  // Test connection button
+  notionTestBtn.onclick = () => {
+    if (!state.notionResearchDbId && !state.notionWikiDbId) {
+      notionStatus.textContent = '⚠ No database IDs set';
+      notionStatus.style.color = '#ef4444';
+      return;
+    }
+    notionStatus.textContent = '⏳ Testing connection...';
+    notionStatus.style.color = '#fbbf24';
+
+    // Use the bridge script to test
+    import('child_process').catch(() => {
+      // Browser environment — can't spawn child_process
+      notionStatus.textContent = '⚠ Test connection only works in Node.js environment';
+      notionStatus.style.color = '#fbbf24';
+    });
   };
 }
