@@ -29,17 +29,19 @@ Each entry is a YAML-like block:
   goal: "Survey GRPO (Group Relative Policy Optimization) as a communication-efficient alternative to PPO for RLHF. Map the theoretical foundations: U-statistics baseline, group size scaling laws, federated variants (FGRPO). Identify integration points with the Omnigent pipeline."
   template: survey
   wiki-page: "grpo-distributed-training"
-  status: pending
+  status: in_progress
   priority: 9
   created: 2026-06-23T15:30:00Z
+  researchers: dispatched 2026-06-23T21:00:00Z
 
 - topic: "DiLoCo vs FetchSGD Communication Efficiency"
   goal: "Compare DiLoCo (inner AdamW + outer Nesterov momentum, 500x comm reduction) against FetchSGD (Count Sketch compression, linear sketch accumulation) for distributed fine-tuning. Determine which is better suited for the Omnigent federated knowledge lattice."
   template: compare
   wiki-page: "diloco-vs-fetchsgd"
-  status: pending
+  status: complete
   priority: 8
   created: 2026-06-23T15:30:00Z
+  completed: 2026-06-23T21:30:00Z
   params:
     item_a: "DiLoCo"
     item_b: "FetchSGD"
@@ -48,9 +50,10 @@ Each entry is a YAML-like block:
   goal: "Implement LoRA-GA (Low-Rank Adaptation with Gradient Approximation) initialization using eigenvector alignment of full gradient matrix. Apply to tau_attention module fine-tuning. Measure convergence parity vs full fine-tuning."
   template: implement
   wiki-page: "lora-ga-knowledge-graph"
-  status: pending
+  status: in_progress
   priority: 7
   created: 2026-06-23T15:30:00Z
+  researchers: dispatched 2026-06-23T21:00:00Z
   params:
     paper: "LoRA-GA NeurIPS 2024"
     framework: "PyTorch"
