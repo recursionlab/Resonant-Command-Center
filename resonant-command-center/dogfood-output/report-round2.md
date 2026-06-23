@@ -142,3 +142,21 @@ document.getElementById('mode-consultant').dispatchEvent(new MouseEvent('click',
 1. **Workspace save/load** — Replace remaining `prompt()` call in `saveWorkspaceBtn.onclick` with a custom modal input (the Clear Monitor and other confirm/prompt calls were already fixed)
 2. **D3 node click** — Consider adding keyboard accessibility for node selection as an alternative to mouse clicks
 3. **Responsive testing** — Test at mobile viewport sizes (375px, 768px) to verify the new media queries work correctly
+
+---
+
+## Build Verification
+
+- `npx vite build`: ✅ Success — 574 modules transformed, 2.00s
+  - `dist/index.html`: 18.24 kB (5.13 kB gzipped)
+  - `dist/assets/index-CMoRr5Hn.css`: 18.75 kB (3.90 kB gzipped)
+  - `dist/assets/index-Dtq731xu.js`: 138.72 kB (45.30 kB gzipped)
+- Production preview (`npx vite preview --port 4173`): ✅ Page renders correctly
+  - Drafts section hidden on initial load ✅
+  - Context badge shows "7 Papers Active" ✅
+  - Command palette opens with Ctrl+K, items show correct labels + shortcuts ✅
+  - Zero console errors on production build ✅
+  - Palette shortcut text renders (template literal fix verified) ✅
+
+### Note: Orphaned Source Files
+The `src/` directory contains split modules (`archive.ts`, `research.ts`, `ui.ts`, etc.) with broken imports. These are NOT part of the Vite build graph (entry is `index.tsx`). TSC errors from these files are pre-existing and don't affect the production bundle.

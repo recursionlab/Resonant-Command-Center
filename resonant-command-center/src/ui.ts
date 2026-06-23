@@ -187,7 +187,7 @@ export function updateDraftUI(): void {
         const applyBtn = document.getElementById('apply-system-command')!;
         sysInput.value = d.content;
         applyBtn.dispatchEvent(new Event('click'));
-        activeDrafts = activeDrafts.filter(x => x.id !== d.id);
+        removeDraft(d.id);
         updateDraftUI();
       }
     });
