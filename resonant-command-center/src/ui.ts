@@ -7,7 +7,7 @@
 
 import { messagesContainer, modalEl, modalMessage, modalInputContainer, modalInput, modalConfirmBtn, modalCancelBtn, draftContainer, tabBtns, tabContents, viewTabs, viewPanes, commandPalette, paletteSearch, paletteResults, latticeGraph } from './dom';
 import { sanitize } from './security';
-import { state, removeDraft } from './state';
+import { state, removeDraft, persistWorkspaces } from './state';
 
 // ── Message Creation ──
 
@@ -151,13 +151,13 @@ function updatePaletteResults(query: string): void {
 
 export function addDraft(title: string, content: string): void {
   const id = Math.random().toString(36).substring(7);
-  activeDrafts.push({ id, title, content });
+  state.activeDrafts.push({ id, title, content });
   updateDraftUI();
 }
 
 export function updateDraftUI(): void {
   draftContainer.innerHTML = '';
-  if (activeDrafts.length === 0) {
+  if (state.activeDrafts.length === 0) {
     const p = document.createElement('p');
     p.className = 'empty-state';
     p.style.fontSize = '0.6rem';
@@ -166,7 +166,7 @@ export function updateDraftUI(): void {
     return;
   }
 
-  activeDrafts.forEach(d => {
+  state.activeDrafts.forEach(d => {
     const card = document.createElement('div');
     card.className = 'draft-card';
 

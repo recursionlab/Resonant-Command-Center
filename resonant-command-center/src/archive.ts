@@ -3,7 +3,7 @@
  */
 
 import { sanitize } from './security';
-import { archiveList, bibList, contextBadge, capacityFill, messagesContainer } from './dom';
+import { archiveList, bibList, contextBadge, capacityFill, messagesContainer, fileUpload } from './dom';
 import { state, persistResearchQueue } from './state';
 import { marked } from 'marked';
 import { createMessageElement, showModal } from './ui';
