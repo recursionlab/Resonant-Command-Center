@@ -30,7 +30,7 @@
           <button id="save-workspace" class="secondary-btn" title="Save Workspace">💾</button>
         </div>
         <button id="export-state" class="secondary-btn">Snapshot</button>
-        <div id="context-badge" class="badge">LATTICE: STABLE</div>
+        <div id="context-badge" class="badge">0 Papers Active</div>
       </div>
     </header>
 
@@ -363,6 +363,20 @@ Softmax_τ replaces global normalization with topologically-stratified sparse at
            <button id="synthesis-btn" class="special-btn">SYNCHRONIZE LATTICE</button>
         </div>
       </aside>
+    </div>
+
+    <!-- Custom Modal Overlay -->
+    <div id="custom-modal" class="modal hidden">
+      <div class="modal-content" style="max-width: 420px;">
+        <div id="modal-message" style="font-size: 0.85rem; color: var(--text-snow); margin-bottom: 1.25rem; line-height: 1.5;"></div>
+        <div id="modal-input-container" class="hidden" style="margin-bottom: 1rem;">
+          <input type="text" id="modal-input" class="code-editor" style="width: 100%; height: 36px; font-size: 0.75rem;" placeholder="">
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button id="modal-cancel" class="secondary-btn">Cancel</button>
+          <button id="modal-confirm" class="special-btn" style="width: auto; padding: 8px 20px;">Confirm</button>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="/index.tsx"></script>
