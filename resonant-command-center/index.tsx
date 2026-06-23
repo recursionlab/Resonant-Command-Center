@@ -4,9 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI } from '@google/genai';
 import { marked } from 'marked';
 import * as d3 from 'd3';
+import { sanitize, escapeHtml } from './src/security';
+import { safeJsonParse } from './src/storage';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 let OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "";
@@ -168,33 +169,45 @@ function addDraft(title: string, content: string) {
 }
 
 function updateDraftUI() {
+  draftContainer.innerHTML = '';
   if (activeDrafts.length === 0) {
-    draftContainer.innerHTML = '<p class="empty-state" style="font-size: 0.6rem;">No active proposals.</p>';
+    const p = document.createElement('p');
+    p.className = 'empty-state';
+    p.style.fontSize = '0.6rem';
+    p.textContent = 'No active proposals.';
+    draftContainer.appendChild(p);
     return;
   }
-  draftContainer.innerHTML = activeDrafts.map(d => `
-    <div class="draft-card" data-id="${d.id}">
-      <div class="draft-title">${d.title}</div>
-      <div class="draft-preview">${d.content.substring(0, 50)}...</div>
-    </div>
-  `).join('');
 
-  draftContainer.querySelectorAll('.draft-card').forEach(card => {
+  activeDrafts.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'draft-card';
+
+    const title = document.createElement('div');
+    title.className = 'draft-title';
+    title.textContent = d.title;
+    card.appendChild(title);
+
+    const preview = document.createElement('div');
+    preview.className = 'draft-preview';
+    preview.textContent = d.content.substring(0, 50) + '...';
+    card.appendChild(preview);
+
     card.addEventListener('click', () => {
-      const id = card.getAttribute('data-id');
-      const draft = activeDrafts.find(d => d.id === id);
-      if (draft && confirm(`Apply draft: ${draft.title}?`)) {
-        systemCommandInput.value = draft.content;
+      if (confirm(`Apply draft: ${d.title}?`)) {
+        systemCommandInput.value = d.content;
         applySystemCommand.dispatchEvent(new Event('click'));
-        activeDrafts = activeDrafts.filter(d => d.id !== id);
+        activeDrafts = activeDrafts.filter(x => x.id !== d.id);
         updateDraftUI();
       }
     });
+
+    draftContainer.appendChild(card);
   });
 }
 
 // Workspaces
-let workspaces: Record<string, any> = JSON.parse(localStorage.getItem('monad_workspaces') || '{}');
+let workspaces: Record<string, any> = safeJsonParse(localStorage.getItem('monad_workspaces'), {});
 
 function updateWorkspaceList() {
   workspaceSelect.innerHTML = '<option value="default">Default Workspace</option>';
@@ -362,6 +375,7 @@ paletteSearch.onkeydown = (e) => {
 
 // D3 Lattice Visualization
 function updateLattice() {
+  try {
   latticeGraph.innerHTML = '';
   const width = latticeGraph.clientWidth || 800;
   const height = latticeGraph.clientHeight || 550;
@@ -452,16 +466,41 @@ function updateLattice() {
           <button id="del-link-btn" style="margin-top: 8px; background: #991b1b; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; width: 100%;">[-] DELETE LINK</button>
         </div>
       `;
-      focusContent.innerHTML = nodeHtml;
-      
-      const delBtn = document.getElementById('del-link-btn');
-      if (delBtn) {
-        delBtn.onclick = () => {
-          chatGraphLinks = chatGraphLinks.filter(l => !(l.source === (typeof d.source === 'object' ? d.source.id : d.source) && l.target === (typeof d.target === 'object' ? d.target.id : d.target)));
-          updateLattice();
-          focusContent.innerHTML = `<p style="font-size: 0.75rem; margin: 0; color: #9ca3af;">Linkage deleted.</p>`;
-        };
-      }
+      focusContent.innerHTML = '';
+      const container = document.createElement('div');
+      container.style.cssText = 'font-size: 0.75rem; line-height: 1.4;';
+
+      container.innerHTML = '<strong>Linkage Details:</strong><br>';
+      const srcSpan = document.createElement('span');
+      srcSpan.style.color = 'var(--accent)';
+      srcSpan.textContent = typeof d.source === 'object' ? d.source.id : d.source;
+      container.appendChild(srcSpan);
+      container.appendChild(document.createTextNode(' → '));
+      const tgtSpan = document.createElement('span');
+      tgtSpan.style.color = 'var(--accent-secondary)';
+      tgtSpan.textContent = typeof d.target === 'object' ? d.target.id : d.target;
+      container.appendChild(tgtSpan);
+      container.appendChild(document.createElement('br'));
+      const relLabel = document.createElement('strong');
+      relLabel.textContent = 'Relationship:';
+      container.appendChild(relLabel);
+      container.appendChild(document.createTextNode(` "${escapeHtml(d.label)}"`));
+      container.appendChild(document.createElement('br'));
+
+      const delBtn = document.createElement('button');
+      delBtn.style.cssText = 'margin-top: 8px; background: #991b1b; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; width: 100%;';
+      delBtn.textContent = '[-] DELETE LINK';
+      delBtn.onclick = () => {
+        chatGraphLinks = chatGraphLinks.filter(l => !(l.source === (typeof d.source === 'object' ? d.source.id : d.source) && l.target === (typeof d.target === 'object' ? d.target.id : d.target)));
+        updateLattice();
+        focusContent.innerHTML = '';
+        const p = document.createElement('p');
+        p.style.cssText = 'font-size: 0.75rem; margin: 0; color: #9ca3af;';
+        p.textContent = 'Linkage deleted.';
+        focusContent.appendChild(p);
+      };
+      container.appendChild(delBtn);
+      focusContent.appendChild(container);
     });
 
   // Render nodes group
@@ -473,25 +512,46 @@ function updateLattice() {
     .style('cursor', 'pointer')
     .on('click', (event: any, d: any) => {
       event.stopPropagation();
-      const nodeHtml = `
-        <div style="font-size: 0.75rem; line-height: 1.4;">
-          <strong>Concept Node:</strong> ${d.id}<br>
-          <strong>Class Type:</strong> ${d.type}<br>
-          ${d.original ? `<div style="max-height:100px; overflow-y:auto; margin-top:4px; opacity:0.8; font-size:0.65rem; color:#9ca3af;">${d.original.summary || 'Database source substrate.'}</div>` : ''}
-          ${d.id !== 'THE MONAD' ? `<button id="del-node-btn" style="margin-top: 8px; background: #991b1b; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; width: 100%;">[-] DELETE NODE</button>` : ''}
-        </div>
-      `;
-      focusContent.innerHTML = nodeHtml;
-      
-      const delBtn = document.getElementById('del-node-btn');
-      if (delBtn) {
+      focusContent.innerHTML = '';
+      const container = document.createElement('div');
+      container.style.cssText = 'font-size: 0.75rem; line-height: 1.4;';
+
+      container.innerHTML = '<strong>Concept Node:</strong> ';
+      const nodeId = document.createElement('span');
+      nodeId.textContent = d.id;
+      container.appendChild(nodeId);
+      container.appendChild(document.createElement('br'));
+      container.innerHTML += '<strong>Class Type:</strong> ';
+      const nodeType = document.createElement('span');
+      nodeType.textContent = d.type;
+      container.appendChild(nodeType);
+      container.appendChild(document.createElement('br'));
+
+      if (d.original) {
+        const summaryDiv = document.createElement('div');
+        summaryDiv.style.cssText = 'max-height:100px; overflow-y:auto; margin-top:4px; opacity:0.8; font-size:0.65rem; color:#9ca3af;';
+        summaryDiv.textContent = d.original.summary || 'Database source substrate.';
+        container.appendChild(summaryDiv);
+      }
+
+      if (d.id !== 'THE MONAD') {
+        const delBtn = document.createElement('button');
+        delBtn.style.cssText = 'margin-top: 8px; background: #991b1b; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; width: 100%;';
+        delBtn.textContent = '[-] DELETE NODE';
         delBtn.onclick = () => {
           chatGraphNodes = chatGraphNodes.filter(n => n.id !== d.id);
           chatGraphLinks = chatGraphLinks.filter(l => l.source !== d.id && l.target !== d.id);
           updateLattice();
-          focusContent.innerHTML = `<p style="font-size: 0.75rem; margin: 0; color: #9ca3af;">Node deleted.</p>`;
+          focusContent.innerHTML = '';
+          const p = document.createElement('p');
+          p.style.cssText = 'font-size: 0.75rem; margin: 0; color: #9ca3af;';
+          p.textContent = 'Node deleted.';
+          focusContent.appendChild(p);
         };
+        container.appendChild(delBtn);
       }
+
+      focusContent.appendChild(container);
     });
 
   // Draw node circles with diverse colors matching cognitive categories
@@ -558,10 +618,22 @@ function updateLattice() {
 
   // Populate drop-down selectors dynamically
   const nodeIds = sanitizedNodes.map(n => n.id);
-  manualLinkSource.innerHTML = '<option value="">Select Source Node...</option>' + 
-    nodeIds.map(id => `<option value="${id}">${id}</option>`).join('');
-  manualLinkTarget.innerHTML = '<option value="">Select Target Node...</option>' + 
-    nodeIds.map(id => `<option value="${id}">${id}</option>`).join('');
+  manualLinkSource.innerHTML = '<option value="">Select Source Node...</option>';
+  manualLinkTarget.innerHTML = '<option value="">Select Target Node...</option>';
+  nodeIds.forEach(id => {
+    const opt1 = document.createElement('option');
+    opt1.value = id;
+    opt1.textContent = id;
+    manualLinkSource.appendChild(opt1);
+    const opt2 = document.createElement('option');
+    opt2.value = id;
+    opt2.textContent = id;
+    manualLinkTarget.appendChild(opt2);
+  });
+  } catch (err) {
+    console.error('[LATTICE ERROR]', err);
+    latticeGraph.innerHTML = '<div style="color:#ef4444;padding:2rem;font-family:monospace;font-size:0.75rem;">LATTICE RENDER ERROR — Check console for details.</div>';
+  }
 }
 
 // Sidebar Interactive Controls Declarations
@@ -895,66 +967,108 @@ function updateArchiveUI() {
     return;
   }
 
-  archiveList.innerHTML = internalArchive.map((item, idx) => `
-    <div class="item-card ${item.status}">
+  archiveList.innerHTML = '';
+  internalArchive.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = `item-card ${item.status}`;
+    card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div style="max-width: 80%;">
-          <b>${item.name}</b>
+          <b></b>
           <div class="meta">
-            ${(item.content.length / 1000).toFixed(1)}k chars • 
-            <span class="status-tag">${item.status.toUpperCase()}</span>
+            <span class="char-count"></span> chars • 
+            <span class="status-tag"></span>
           </div>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button onclick="window.viewLogic(${idx})" class="secondary-btn" style="font-size: 0.6rem; padding: 2px 6px;" ${item.status !== 'ready' ? 'disabled' : ''}>View Logic</button>
-          <button onclick="window.removeArchive(${idx})" class="remove-btn">×</button>
+          <button class="secondary-btn view-logic-btn" style="font-size: 0.6rem; padding: 2px 6px;" ${item.status !== 'ready' ? 'disabled' : ''}>View Logic</button>
+          <button class="remove-btn" aria-label="Remove">&times;</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+    card.querySelector('b')!.textContent = item.name;
+    card.querySelector('.char-count')!.textContent = (item.content.length / 1000).toFixed(1) + 'k';
+    card.querySelector('.status-tag')!.textContent = item.status.toUpperCase();
+    card.querySelector('.status-tag')!.className = 'status-tag';
+
+    const viewBtn = card.querySelector('.view-logic-btn') as HTMLButtonElement;
+    viewBtn.onclick = () => handleViewLogic(idx);
+
+    const removeBtn = card.querySelector('.remove-btn') as HTMLButtonElement;
+    removeBtn.onclick = () => handleRemoveArchive(idx);
+
+    archiveList.appendChild(card);
+  });
 }
 
-(window as any).viewLogic = async (idx: number) => {
+async function handleViewLogic(idx: number) {
   const item = internalArchive[idx];
   if (item.summary) {
     createMessageElement('assistant', `### Document Index: ${item.name}\n\n${item.summary}`);
-    const html = await marked.parse(item.summary);
+    const parsedHtml = marked.parse(item.summary);
+    const html = typeof parsedHtml === 'string' ? parsedHtml : await parsedHtml;
     const lastMsg = messagesContainer.lastElementChild?.querySelector('.content');
-    if (lastMsg) lastMsg.innerHTML = `<h3>Document Index: ${item.name}</h3>` + html;
+    if (lastMsg) {
+      lastMsg.innerHTML = '';
+      const heading = document.createElement('h3');
+      heading.textContent = `Document Index: ${item.name}`;
+      lastMsg.appendChild(heading);
+      const sanitizedDiv = document.createElement('div');
+      sanitizedDiv.innerHTML = sanitize(html);
+      while (sanitizedDiv.firstChild) {
+        lastMsg.appendChild(sanitizedDiv.firstChild);
+      }
+    }
   }
-};
+}
 
-(window as any).removeArchive = (idx: number) => {
+function handleRemoveArchive(idx: number) {
   internalArchive.splice(idx, 1);
   updateArchiveUI();
-};
+}
+
+
 
 // Research Library
 function updateBibUI() {
+  bibList.innerHTML = '';
   if (savedBibliography.length === 0) {
-    bibList.innerHTML = '<p class="empty-state">No sources saved yet.</p>';
+    const p = document.createElement('p');
+    p.className = 'empty-state';
+    p.textContent = 'No sources saved yet.';
+    bibList.appendChild(p);
     return;
   }
-  bibList.innerHTML = savedBibliography.map((item, idx) => `
-    <div class="item-card">
-      <b>${item.title}</b><br>
-      <a href="${item.url}" target="_blank" style="font-size: 0.7rem; color: #6366f1;">${item.url}</a>
-      <button onclick="window.removeReference(${idx})" style="float:right; background:none; border:none; color:var(--text-muted); cursor:pointer;">×</button>
-    </div>
-  `).join('');
+  savedBibliography.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'item-card';
+
+    const title = document.createElement('b');
+    title.textContent = item.title;
+    card.appendChild(title);
+    card.appendChild(document.createElement('br'));
+
+    const link = document.createElement('a');
+    link.href = item.url;
+    link.target = '_blank';
+    link.style.cssText = 'font-size: 0.7rem; color: #6366f1;';
+    link.textContent = item.url;
+    card.appendChild(link);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.style.cssText = 'float:right; background:none; border:none; color:var(--text-muted); cursor:pointer;';
+    removeBtn.textContent = '×';
+    removeBtn.onclick = () => handleRemoveReference(idx);
+    card.appendChild(removeBtn);
+
+    bibList.appendChild(card);
+  });
 }
 
-(window as any).addReference = (title: string, url: string) => {
-  if (!savedBibliography.some(ref => ref.url === url)) {
-    savedBibliography.push({ title, url });
-    updateBibUI();
-  }
-};
-
-(window as any).removeReference = (idx: number) => {
+function handleRemoveReference(idx: number) {
   savedBibliography.splice(idx, 1);
   updateBibUI();
-};
+}
 
 // Generation Logic
 async function handleGenerate(prompt: string, isSynthesis: boolean = false) {
@@ -1045,7 +1159,7 @@ async function handleGenerate(prompt: string, isSynthesis: boolean = false) {
         const reasoning = reasoningMatch[1].trim();
         const reasoningEl = document.createElement('div');
         reasoningEl.className = 'reasoning-block';
-        reasoningEl.innerHTML = `<strong>Strategic Reasoning:</strong><br>${reasoning}`;
+        reasoningEl.innerHTML = `<strong>Strategic Reasoning:</strong><br>${sanitize(reasoning)}`;
         assistantMsg.insertBefore(reasoningEl, contentEl);
         responseText = responseText.replace(reasoningMatch[0], '').trim();
       }
@@ -1071,7 +1185,9 @@ async function handleGenerate(prompt: string, isSynthesis: boolean = false) {
       }
     }
 
-    contentEl.innerHTML = await marked.parse(responseText);
+    const parsedResponse = marked.parse(responseText);
+    const responseHtml = typeof parsedResponse === 'string' ? parsedResponse : await parsedResponse;
+    contentEl.innerHTML = sanitize(responseHtml);
 
     // Sources (Bypassed on OpenRouter since step-3.5 model uses integrated grounding or does not return candidates chunks)
     const chunks = openRouterData.candidates?.[0]?.groundingMetadata?.groundingChunks;
@@ -1082,10 +1198,24 @@ async function handleGenerate(prompt: string, isSynthesis: boolean = false) {
         if (c.web) {
           const tag = document.createElement('div');
           tag.className = 'source-tag';
-          tag.innerHTML = `
-            <a href="${c.web.uri}" target="_blank">${c.web.title || 'Source'}</a>
-            <button class="add-bib-btn" onclick="window.addReference('${(c.web.title || 'Untitled').replace(/'/g, "\\'")}', '${c.web.uri}')">+</button>
-          `;
+
+          const link = document.createElement('a');
+          link.href = c.web.uri;
+          link.target = '_blank';
+          link.textContent = c.web.title || 'Source';
+          tag.appendChild(link);
+
+          const addBtn = document.createElement('button');
+          addBtn.className = 'add-bib-btn';
+          addBtn.textContent = '+';
+          addBtn.onclick = () => {
+            if (!savedBibliography.some(ref => ref.url === c.web.uri)) {
+              savedBibliography.push({ title: c.web.title || 'Untitled', url: c.web.uri });
+              updateBibUI();
+            }
+          };
+          tag.appendChild(addBtn);
+
           div.appendChild(tag);
         }
       });
@@ -1094,7 +1224,11 @@ async function handleGenerate(prompt: string, isSynthesis: boolean = false) {
 
   } catch (error: any) {
     console.error(error);
-    contentEl.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
+    const errDiv = document.createElement('div');
+    errDiv.style.color = '#ef4444';
+    errDiv.textContent = `Error: ${error.message}`;
+    contentEl.innerHTML = '';
+    contentEl.appendChild(errDiv);
     // Reset chat on fatal error to allow recovery
     activeChat = null;
   } finally {
@@ -1106,7 +1240,14 @@ async function handleGenerate(prompt: string, isSynthesis: boolean = false) {
 function createMessageElement(role: 'user' | 'assistant', content: string = '') {
   const div = document.createElement('div');
   div.className = `message ${role}`;
-  div.innerHTML = `<div class="content">${content}</div>`;
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'content';
+  if (role === 'user') {
+    contentDiv.textContent = content;
+  } else {
+    contentDiv.innerHTML = sanitize(content);
+  }
+  div.appendChild(contentDiv);
   messagesContainer.appendChild(div);
   messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
   return div;

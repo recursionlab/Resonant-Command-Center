@@ -1,0 +1,25 @@
+{
+  "hash": "69d0d86e",
+  "configHash": "9fd229b6",
+  "lockfileHash": "35158ab8",
+  "browserHash": "58e42c30",
+  "optimized": {
+    "marked": {
+      "src": "../../node_modules/marked/lib/marked.esm.js",
+      "file": "marked.js",
+      "fileHash": "99699b7b",
+      "needsInterop": false
+    },
+    "d3": {
+      "src": "../../node_modules/d3/src/index.js",
+      "file": "d3.js",
+      "fileHash": "27019fd2",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-V6TY7KAL": {
+      "file": "chunk-V6TY7KAL.js"
+    }
+  }
+}
