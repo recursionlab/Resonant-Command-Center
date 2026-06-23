@@ -27,11 +27,15 @@ describe('NotionClient', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockFetch.mockReset();
+    // Use short delay for tests — override the 5-minute production default
     client = new NotionClient('test-key-123');
+    client['delayMs'] = 10; // Override private field for fast tests
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.clearAllTimers();
+    mockFetch.mockReset();
   });
 
   describe('construction', () => {
@@ -83,18 +87,20 @@ describe('NotionClient', () => {
       });
 
       const promise = client.createPage('db-1', 'Test', '# Hello');
-      await vi.advanceTimersByTimeAsync(300000);
+      await vi.advanceTimersByTimeAsync(10);
       const page = await promise;
       expect(page.id).toBe('page-123');
       expect(page.url).toBe('https://notion.so/page-123');
-    }, 10000);
+    });
 
     it('throws on 404 (database not shared)', async () => {
       mockResponse(404, { error: { message: 'Not found' } });
-      const promise = client.createPage('db-1', 'Test', 'content');
-      await vi.advanceTimersByTimeAsync(300000);
-      await expect(promise).rejects.toThrow('not found');
-    }, 10000);
+      await expect(async () => {
+        const promise = client.createPage('db-1', 'Test', 'content');
+        await vi.advanceTimersByTimeAsync(10);
+        await promise;
+      }).rejects.toThrow('not found');
+    });
   });
 
   describe('syncQueueToNotion', () => {
@@ -108,12 +114,11 @@ describe('NotionClient', () => {
         { id: 'g2', topic: 'LoRA-GA', goal: 'Implement LoRA-GA', template: 'implement', status: 'pending', priority: 7, created: '2026-06-23' },
       ];
 
-      // The 5-minute delay is real — use fake timers to advance
       const promise = client.syncQueueToNotion(goals, 'db-research');
 
-      // Advance past two 5-minute delays
-      await vi.advanceTimersByTimeAsync(300000);
-      await vi.advanceTimersByTimeAsync(300000);
+      // Advance past two delays (10ms each in test)
+      await vi.advanceTimersByTimeAsync(10);
+      await vi.advanceTimersByTimeAsync(10);
 
       const result = await promise;
 
@@ -132,7 +137,7 @@ describe('NotionClient', () => {
       ];
 
       const promise = client.syncQueueToNotion(goals, 'db-research');
-      await vi.advanceTimersByTimeAsync(300000);
+      await vi.advanceTimersByTimeAsync(10);
 
       const result = await promise;
       expect(result.synced).toBe(0);
@@ -149,8 +154,8 @@ describe('NotionClient', () => {
       mockResponse(200, { id: 'wiki-1', url: 'https://notion.so/wiki-1', properties: {} });
 
       const promise = client.syncWikiPage('db-wiki', 'New Article', '# Content', 'Research');
-      await vi.advanceTimersByTimeAsync(300000); // query delay
-      await vi.advanceTimersByTimeAsync(300000); // create delay
+      await vi.advanceTimersByTimeAsync(10); // query delay
+      await vi.advanceTimersByTimeAsync(10); // create delay
 
       const result = await promise;
       expect(result.id).toBe('wiki-1');
@@ -165,8 +170,8 @@ describe('NotionClient', () => {
       mockResponse(200, { id: 'wiki-existing', url: 'https://notion.so/existing', properties: {} });
 
       const promise = client.syncWikiPage('db-wiki', 'Existing Article', '# Updated');
-      await vi.advanceTimersByTimeAsync(300000); // query delay
-      await vi.advanceTimersByTimeAsync(300000); // update delay
+      await vi.advanceTimersByTimeAsync(10); // query delay
+      await vi.advanceTimersByTimeAsync(10); // update delay
 
       const result = await promise;
       expect(result.id).toBe('wiki-existing');

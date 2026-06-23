@@ -50,7 +50,7 @@ export class NotionClient {
 
   private async request(method: string, path: string, body: any = null, enforceDelay = true): Promise<any> {
     if (enforceDelay) {
-      await new Promise(r => setTimeout(r, this.delayMs));
+      await this.delay();
     }
 
     const opts: RequestInit = {
@@ -75,6 +75,10 @@ export class NotionClient {
     }
 
     return data;
+  }
+
+  private async delay(): Promise<void> {
+    await new Promise(r => setTimeout(r, this.delayMs));
   }
 
   // ── Connection Test ──
