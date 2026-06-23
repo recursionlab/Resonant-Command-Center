@@ -121,13 +121,11 @@ class KanbanClient:
 def format_researcher_task(task: ResearchTask) -> str:
     """Format a ResearchTask as kanban task body."""
     return f"""## Task: {task.title}
-**Type:** {task.task_type}
 **Priority:** {'high' if task.priority > 5 else 'medium' if task.priority > 0 else 'low'}
 **Goal:** {task.goal}
 **Context:** {task.context}
-**Acceptance:** {task.acceptance_criteria}
 **Toolsets:** {', '.join(task.toolsets) if task.toolsets else 'default'}
-**Metadata:** {task.metadata}
+**Status:** {task.status}
 """
 
 
@@ -139,9 +137,8 @@ def format_synthesis_task(task: ResearchTask) -> str:
 **Goal:** {task.goal}
 **Context:** {task.context}
 **Parent Tasks:** {', '.join(task.metadata.get('parent_ids', []))}
-**Acceptance:** {task.acceptance_criteria}
 **Wiki Page:** {task.metadata.get('wiki_page', 'TBD')}
-**Toolsets:** {', '.join(task.toolsets) if task.toolsets else SYNTHESIZER_PROFILE.toolsets}
+**Toolsets:** {', '.join(task.toolsets) if task.toolsets else 'terminal,file,web'}
 """
 
 

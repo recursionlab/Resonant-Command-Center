@@ -7,6 +7,7 @@ Orchestrates: Goal → Decompose → Kanban → Delegate Researchers → Synthes
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Callable
 from datetime import datetime
+from pathlib import Path
 import json
 
 # Try to import Hermes tools (only available inside Hermes runtime)
@@ -94,7 +95,7 @@ class Orchestrator:
     def __init__(
         self,
         kanban_board: str = "omni",
-        wiki_root: str = "D:/CODEX/Omnigent/wiki",
+        wiki_root: Path = Path("D:/CODEX/Omnigent/wiki"),
         delegate_fn: Callable = None,  # Injected delegate_task function
         kanban_tools: Any = None,      # Injected kanban_* tools
     ):
@@ -143,13 +144,7 @@ class Orchestrator:
         
         # Phase 1: Decompose
         print("📋 Phase 1: Decomposing goal...")
-        researcher_tasks = decompose_goal(
-            goal=goal.goal,
-            topic=goal.topic,
-            wiki_page=goal.wiki_page,
-            template=goal.template,
-            custom_params=goal.custom_params,
-        )
+        researcher_tasks = decompose_goal(goal)
         print(f"   Created {len(researcher_tasks)} researcher tasks")
         
         # Phase 2: Create Kanban tasks
@@ -162,11 +157,7 @@ class Orchestrator:
         
         # Phase 3: Create synthesis task (blocked until researchers done)
         print("🔗 Phase 3: Creating synthesis task...")
-        synthesis_task = create_synthesis_task(
-            researcher_task_ids=researcher_task_ids,
-            wiki_page=goal.wiki_page,
-            synthesis_goal=goal.goal,
-        )
+        synthesis_task = create_synthesis_task(goal, researcher_tasks)
         synthesis_task_id = self._create_synthesis_task(synthesis_task, researcher_task_ids)
         print(f"   ✓ {synthesis_task_id}: {synthesis_task.title}")
         
