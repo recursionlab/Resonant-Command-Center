@@ -51,10 +51,10 @@ Each entry is a YAML-like block:
   goal: "Implement LoRA-GA (Low-Rank Adaptation with Gradient Approximation) initialization using eigenvector alignment of full gradient matrix. Apply to tau_attention module fine-tuning. Measure convergence parity vs full fine-tuning."
   template: implement
   wiki-page: "lora-ga-knowledge-graph"
-  status: in_progress
+  status: complete
   priority: 7
   created: 2026-06-23T15:30:00Z
-  researchers: dispatched 2026-06-23T21:00:00Z
+  completed: 2026-06-23T21:30:00Z
   params:
     paper: "LoRA-GA NeurIPS 2024"
     framework: "PyTorch"
