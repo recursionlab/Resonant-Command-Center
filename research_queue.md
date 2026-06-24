@@ -34,6 +34,7 @@ Each entry is a YAML-like block:
   created: 2026-06-23T15:30:00Z
   completed: 2026-06-23T21:30:00Z
   researchers: dispatched 2026-06-23T21:00:00Z
+  wiki: synthesized 2026-06-24
 
 - topic: "DiLoCo vs FetchSGD Communication Efficiency"
   goal: "Compare DiLoCo (inner AdamW + outer Nesterov momentum, 500x comm reduction) against FetchSGD (Count Sketch compression, linear sketch accumulation) for distributed fine-tuning. Determine which is better suited for the Omnigent federated knowledge lattice."
@@ -43,6 +44,8 @@ Each entry is a YAML-like block:
   priority: 8
   created: 2026-06-23T15:30:00Z
   completed: 2026-06-23T21:30:00Z
+  researchers: dispatched 2026-06-23T21:00:00Z
+  wiki: synthesized 2026-06-24
   params:
     item_a: "DiLoCo"
     item_b: "FetchSGD"
@@ -55,6 +58,8 @@ Each entry is a YAML-like block:
   priority: 7
   created: 2026-06-23T15:30:00Z
   completed: 2026-06-23T21:30:00Z
+  researchers: dispatched 2026-06-23T21:00:00Z
+  wiki: synthesized 2026-06-24
   params:
     paper: "LoRA-GA NeurIPS 2024"
     framework: "PyTorch"
@@ -63,17 +68,19 @@ Each entry is a YAML-like block:
   goal: "Re-examine the theoretical complexity claims of Softmax_τ — specifically the O(n·k) complexity via torsion class partitioning. Verify against Chinchilla scaling law parameters. Identify whether the torsion mask provides communication reduction benefits in a distributed (FSDP-QLoRA) setting."
   template: survey
   wiki-page: "softmax-tau-theory"
-  status: pending
+  status: in_progress
   priority: 6
   created: 2026-06-23T15:30:00Z
+  researchers: dispatched 2026-06-24T09:00:00Z
 
 - topic: "Hopf Exceptional Points in Attention Landscapes"
   goal: "Survey the paper 'Hopf Exceptional Points' as a theoretical framework for understanding attention head dynamics. Map the mathematical structure (non-Hermitian degeneracies, exceptional point topology) to practical attention mechanisms in the Omnigent lattice."
   template: survey
   wiki-page: "hopf-exceptional-points-attention"
-  status: pending
+  status: in_progress
   priority: 5
   created: 2026-06-23T15:30:00Z
+  researchers: dispatched 2026-06-24T09:00:00Z
 
 ## Completed Topics
 
