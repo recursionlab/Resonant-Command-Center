@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Notion API Bridge Script
+ * notion-sync.mjs — Notion API Bridge Script
  * 
  * Handles Notion API authentication, CRUD, and queries.
  * Works on Windows (no ntn dependency) via HTTP + fetch.
@@ -19,6 +19,25 @@ const NOTION_KEY = process.env.NOTION_API_KEY;
 const NOTION_VERSION = '2025-09-03';
 const BASE_URL = 'https://api.notion.com/v1';
 const DELAY_MS = 300000; // 5 minutes between API calls
+
+// ── Configured Databases ──
+const DATABASES = {
+  researchQueue: {
+    name: 'Omnigent Research Queue',
+    databaseId: 'bc1c86cb-1631-4f16-8952-92523a965bc1',
+    dataSourceId: '2371c3ca-0ac7-4218-8d9d-f9e9f94de227',
+  },
+  wiki: {
+    name: 'Omnigent Wiki',
+    databaseId: '6506df75-ca99-4471-ae08-1aaf146c2bd5',
+    dataSourceId: 'fe1060fd-8314-49bc-958d-b84215653cba',
+  },
+  agentTasks: {
+    name: 'Omnigent Agent Tasks',
+    databaseId: 'ea31f444-a250-4df3-8408-4167847c9ba5',
+    dataSourceId: '6b0f070e-0900-4ad9-a033-af320138383d',
+  },
+};
 
 // ── HTTP Helper ──
 
@@ -58,7 +77,7 @@ async function notionRequest(method, path, body = null, delayMs = DELAY_MS) {
     if (res.status === 401) {
       console.error('ERROR: Notion API authentication failed. Check NOTION_API_KEY.');
     } else if (res.status === 404) {
-      console.error('ERROR: Notion resource not found. Ensure the database/page is shared with the integration.');
+      console.error('ERROR: Notion resource not found. Ensure database is shared with integration.');
     } else if (res.status === 429) {
       console.error('ERROR: Notion rate limit exceeded. Wait and retry.');
     } else {
@@ -74,116 +93,90 @@ async function notionRequest(method, path, body = null, delayMs = DELAY_MS) {
 
 async function testConnection() {
   console.log('Testing Notion API connection...');
-  const data = await notionRequest('POST', '/search', { page_size: 100 }, 0);
+  const data = await notionRequest('GET', '/users/me', null, 0);
   
-  const databases = data.results?.filter(r => r.object === 'data_source' || r.object === 'database') || [];
-  
-  if (databases.length === 0) {
-    console.log('✓ Connection successful, but no databases found.');
-    console.log('  → Share databases with your Notion integration to use them.');
-    console.log('  → Go to page menu (...) → Connect to → [Your Integration]');
-  } else {
-    console.log(`✓ Connection successful — ${databases.length} database(s) accessible:`);
-    for (const db of databases) {
-      const title = db.title?.[0]?.plain_text || 'Untitled';
-      console.log(`  - ${title}`);
-      console.log(`    database_id: ${db.id}`);
-      if (db.data_source_id) {
-        console.log(`    data_source_id: ${db.data_source_id}`);
-      }
+  if (data) {
+    console.log('✓ Connection successful — authenticated as:', data.name || data.display_name || 'unknown');
+    console.log('  Configured databases:');
+    for (const [key, db] of Object.entries(DATABASES)) {
+      console.log(`  - ${db.name}: ${db.databaseId}`);
     }
   }
-}
 
-async function searchNotion(query) {
-  console.log(`Searching Notion for: "${query}"`);
-  const data = await notionRequest('POST', '/search', { query }, 0);
-  
-  const results = data.results || [];
-  if (results.length === 0) {
-    console.log('No results found.');
-    return;
+async function syncQueueToDatabase(dbKey) {
+  const db = DATABASES[dbKey];
+  if (!db) {
+    console.error(`ERROR: Unknown database key "${dbKey}". Available: ${Object.keys(DATABASES).join(', ')}`);
+    process.exit(1);
   }
   
-  console.log(`Found ${results.length} result(s):`);
-  for (const r of results.slice(0, 10)) {
-    const title = r.title?.[0]?.plain_text || r.properties?.Name?.title?.[0]?.plain_text || 'Untitled';
-    console.log(`  - ${title} (${r.id})`);
-  }
-}
-
-async function createPage(databaseId, title, markdown) {
-  console.log(`Creating page "${title}" in database ${databaseId}...`);
-  
-  const body = {
-    parent: { database_id: databaseId },
-    properties: {
-      Name: { title: [{ text: { content: title } }] },
-    },
-    markdown: markdown,
-  };
-  
-  const data = await notionRequest('POST', '/pages', body);
-  const pageId = data.id;
-  const pageUrl = data.url;
-  
-  console.log(`✓ Page created:`);
-  console.log(`  id:  ${pageId}`);
-  console.log(`  url: ${pageUrl}`);
-  
-  // Output as JSON for programmatic use
-  console.log(JSON.stringify({ id: pageId, url: pageUrl, title }, null, 2));
-}
-
-async function queryDatabase(databaseId, filter = null) {
-  console.log(`Querying database ${databaseId}...`);
-  
-  const body = {
-    page_size: 100,
-  };
-  if (filter) body.filter = filter;
-  
-  const data = await notionRequest('POST', `/data_sources/${databaseId}/query`, body);
-  
-  const results = data.results || [];
-  console.log(`Found ${results.length} record(s):`);
-  
-  for (const page of results) {
-    const title = page.properties?.Name?.title?.[0]?.plain_text || 'Untitled';
-    const status = page.properties?.Status?.select?.name || '';
-    console.log(`  - ${title}${status ? ` [${status}]` : ''} (${page.id})`);
-  }
-}
-
-async function syncQueueToDatabase(databaseId, markdownFile) {
-  const fs = await import('fs');
-  const markdown = fs.readFileSync(markdownFile, 'utf-8');
-  
-  // Parse markdown into queue items (## Heading per item)
-  const items = markdown.split(/^## /m).filter(s => s.trim());
-  
-  console.log(`Syncing ${items.length} item(s) to Notion database ${databaseId}...`);
+  console.log(`Syncing research queue to "${db.name}"...`);
   console.log(`(5 minute delay between each API call)`);
+  
+  // Read queue from research_queue.md
+  const fs = await import('fs');
+  let markdown;
+  try {
+    markdown = fs.readFileSync('research_queue.md', 'utf-8');
+  } catch (err) {
+    console.error('ERROR: Could not read research_queue.md:', err.message);
+    process.exit(1);
+  }
+  
+  // Parse active topics from markdown
+  const sections = markdown.split(/^## /m).filter(s => s.includes('topic:'));
+  const items = sections.map(s => {
+    const lines = s.split('\n');
+    const titleLine = lines.find(l => l.includes('topic:'));
+    const title = titleLine?.replace(/.*topic:\s*/, '').replace(/["']/g, '').trim() || 'Untitled';
+    const content = lines.slice(0, 5).join('\n').trim();
+    return { title, content };
+  });
+  
+  console.log(`Found ${items.length} items to sync`);
   
   const results = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    const lines = item.split('\n');
-    const title = lines[0]?.trim() || `Item ${i + 1}`;
-    const content = lines.slice(1).join('\n').trim();
-    
-    console.log(`  [${i + 1}/${items.length}] Syncing: ${title}`);
+    console.log(`  [${i + 1}/${items.length}] Syncing: ${item.title}`);
     
     try {
-      await createPage(databaseId, title, content);
-      results.push({ title, status: 'synced' });
+      const body = {
+        parent: { database_id: db.databaseId },
+        properties: {
+          Name: { title: [{ text: { content: item.title } }] },
+        },
+        markdown: item.content,
+      };
+      
+      await notionRequest('POST', '/pages', body);
+      results.push({ title: item.title, status: 'synced' });
     } catch (err) {
-      console.error(`  ✗ Failed to sync "${title}": ${err.message}`);
-      results.push({ title, status: 'failed', error: err.message });
+      console.error(`  ✗ Failed: ${err.message}`);
+      results.push({ title: item.title, status: 'failed', error: err.message });
     }
   }
   
   console.log(`\nSync complete: ${results.filter(r => r.status === 'synced').length}/${items.length} synced`);
+}
+
+async function queryDatabase(dbKey) {
+  const db = DATABASES[dbKey];
+  if (!db) {
+    console.error(`ERROR: Unknown database key "${dbKey}"`);
+    process.exit(1);
+  }
+  
+  console.log(`Querying "${db.name}"...`);
+  const data = await notionRequest('POST', `/data_sources/${db.dataSourceId}/query`, {});
+  
+  const results = data.results || [];
+  console.log(`${results.length} pages:`);
+  for (const p of results) {
+    const name = p.properties?.Name?.title?.[0]?.plain_text || '(untitled)';
+    const created = p.created_time?.slice(0, 10) || '';
+    console.log(`  • ${name} [${created}]`);
+  }
 }
 
 // ── CLI ──
@@ -203,71 +196,47 @@ async function main() {
       await testConnection();
       break;
     
-    case 'search': {
-      const query = getFlag('query') || args[1];
-      if (!query) {
-        console.error('Usage: node scripts/notion-sync.mjs search --query "term"');
-        process.exit(1);
-      }
-      await searchNotion(query);
-      break;
-    }
-    
-    case 'create-page': {
-      const databaseId = getFlag('database-id');
-      const title = getFlag('title');
-      const markdownFile = getFlag('markdown-file');
-      
-      if (!databaseId || !title || !markdownFile) {
-        console.error('Usage: node scripts/notion-sync.mjs create-page --database-id XXX --title "Title" --markdown-file path.md');
-        process.exit(1);
-      }
-      
-      const fs = await import('fs');
-      const markdown = fs.readFileSync(markdownFile, 'utf-8');
-      await createPage(databaseId, title, markdown);
-      break;
-    }
-    
-    case 'query-database': {
-      const databaseId = getFlag('database-id');
-      if (!databaseId) {
-        console.error('Usage: node scripts/notion-sync.mjs query-database --database-id XXX');
-        process.exit(1);
-      }
-      await queryDatabase(databaseId);
-      break;
-    }
-    
     case 'sync-queue': {
-      const databaseId = getFlag('database-id');
-      const markdownFile = getFlag('markdown-file');
-      
-      if (!databaseId || !markdownFile) {
-        console.error('Usage: node scripts/notion-sync.mjs sync-queue --database-id XXX --markdown-file queue.md');
-        process.exit(1);
-      }
-      await syncQueueToDatabase(databaseId, markdownFile);
+      const dbKey = getFlag('db') || 'researchQueue';
+      await syncQueueToDatabase(dbKey);
       break;
     }
+    
+    case 'query': {
+      const dbKey = getFlag('db') || 'researchQueue';
+      await queryDatabase(dbKey);
+      break;
+    }
+    
+    case 'list-all':
+      for (const [key, db] of Object.entries(DATABASES)) {
+        console.log(`\n=== ${db.name} ===`);
+        const data = await notionRequest('POST', `/v1/data_sources/${db.dataSourceId}/query`, {}, 0);
+        const results = data.results || [];
+        console.log(`${results.length} pages:`);
+        for (const p of results) {
+          const name = p.properties?.Name?.title?.[0]?.plain_text || '(untitled)';
+          const created = p.created_time?.slice(0, 10) || '';
+          console.log(`  • ${name} [${created}]`);
+        }
+      }
+      break;
     
     default:
       console.log(`
 Notion API Bridge — CLI
 
 Commands:
-  test-connection                    Test API key and list accessible databases
-  search --query "term"              Search Notion workspace
-  create-page --database-id XXX --title "Title" --markdown-file path.md
-  query-database --database-id XXX  List items in a database
-  sync-queue --database-id XXX --markdown-file queue.md
-
-Options:
-  NOTION_API_KEY env var required for all commands
+  test-connection              Test API key and list accessible databases
+  sync-queue --db <key>        Sync research_queue.md to Notion (keys: researchQueue, wiki, agentTasks)
+  query --db <key>             List pages in a database
+  list-all                     List all pages across all configured databases
 
 Examples:
-  NOTION_API_KEY=ntn_xxx node scripts/notion-sync.mjs test-connection
-  NOTION_API_KEY=ntn_xxx node scripts/notion-sync.mjs search --query "Research"
+  node scripts/notion-sync.mjs test-connection
+  node scripts/notion-sync.mjs sync-queue --db researchQueue
+  node scripts/notion-sync.mjs query --db wiki
+  node scripts/notion-sync.mjs list-all
       `);
   }
 }
